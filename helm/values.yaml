@@ -9,7 +9,7 @@ replicaCount: 1
 image:
   repository: igrsantos/pressao-api
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: 363b1d96
 
 imagePullSecrets: []
 
