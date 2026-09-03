@@ -27,8 +27,24 @@ class PressaoPlugin_Ajax {
         
         add_action('wp_ajax_pressao_get_acoes_status', [$this, 'ajax_get_acoes_status']);
         add_action('wp_ajax_nopriv_pressao_get_acoes_status', [$this, 'ajax_get_acoes_status']);
+
+        // Sem verificação de nonce: serve para renovar nonce stale (page cache / sessão)
+        add_action('wp_ajax_pressao_refresh_nonce', [$this, 'ajax_refresh_nonce']);
+        add_action('wp_ajax_nopriv_pressao_refresh_nonce', [$this, 'ajax_refresh_nonce']);
     }
     
+    /**
+     * AJAX: Renova o nonce da sessão atual (não exige nonce prévio).
+     *
+     * Necessário quando a página foi servida de cache com nonce de outro usuário/tick,
+     * ou quando cookies de sessão WP caíram após estouro do limite de cookies.
+     */
+    public function ajax_refresh_nonce() {
+        wp_send_json_success([
+            'nonce' => wp_create_nonce('pressao_acao_nonce'),
+        ]);
+    }
+
     /**
      * AJAX: Obtém dados da campanha
      */

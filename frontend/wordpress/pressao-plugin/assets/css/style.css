@@ -1,9 +1,43 @@
 /**
- * Pressão Plugin - CSS Mínimo
- * Com suporte ao nome da campanha
+ * Pressão Plugin — Estilo fiel aos layouts do cliente
+ *
+ * Inventário visual (PDFs em layouts/):
+ *   - Card branco centralizado, max-width 420px, border-radius 20px
+ *   - Ações em linhas com borda cinza, ícone quadrado preto 36px, nome bold,
+ *     subtítulo + tempo estimado cinza, seta/check circular à direita
+ *   - Progresso no rodapé: fundo escuro, texto branco, barra verde
+ *   - Tela social: header com seta/ícone, mensagem em textarea, botão preto
+ *     full-width, seção de confirmação com check verde
+ *   - Tela e-mail: chips de destinatários, toggle "Ver mensagem" laranja,
+ *     formulário com labels + inputs arredondados, botão preto full-width
  */
 
-/* Container base */
+/* ============================================
+   TOKENS (custom properties)
+   ============================================ */
+:root {
+    --pressao-radius-card: 20px;
+    --pressao-radius-item: 12px;
+    --pressao-radius-btn: 999px;
+    --pressao-radius-input: 10px;
+    --pressao-max-width: 420px;
+    --pressao-bg-card: #ffffff;
+    --pressao-bg-page: #f5f5f5;
+    --pressao-bg-dark: #1a1a1a;
+    --pressao-text-primary: #111827;
+    --pressao-text-secondary: #6b7280;
+    --pressao-text-muted: #9ca3af;
+    --pressao-border: #e5e7eb;
+    --pressao-border-light: #f3f4f6;
+    --pressao-accent-green: #22c55e;
+    --pressao-accent-orange: #f97316;
+    --pressao-icon-size: 36px;
+    --pressao-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ============================================
+   CONTAINER BASE — Card mobile branco
+   ============================================ */
 .pressao-widget-container,
 .pressao-form-container,
 .pressao-list-container {
@@ -11,332 +45,522 @@
     width: 100%;
 }
 
-/* Header do widget com nome + campanha */
-.pressao-widget-header {
-    display: inline;
+.pressao-alvos {
+    font-family: var(--pressao-font-family);
+    max-width: var(--pressao-max-width);
+    margin: 1.5rem auto;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    padding: 0;
+    border: none;
 }
 
-/* Nome do widget */
-.pressao-widget-name {
-    display: inline;
-}
-
-/* Nome da campanha */
-.pressao-widget-campaign {
-    display: inline;
-}
-
-.pressao-campaign-separator {
-    display: inline;
-    margin: 0 5px;
-    color: #999;
-}
-
-.pressao-campaign-name {
-    display: inline;
-    font-weight: 500;
-}
-
-/* Conteúdo dinâmico */
-.pressao-widget-content,
-.pressao-form-content,
-.pressao-list-content {
+/* ============================================
+   CABEÇALHO DO CARD — oculto por padrão
+   (o título "Por onde você quer começar?" é
+   conteúdo editorial do WordPress, não do plugin)
+   ============================================ */
+.pressao-alvos-header {
     display: none;
 }
 
-.pressao-widget-content.active,
-.pressao-form-content.active,
-.pressao-list-content.active {
-    display: block;
-}
-
-/* Quando a campanha está carregando */
-.pressao-campaign-loading {
-    display: inline-block;
-    margin-left: 5px;
-    font-size: 12px;
-    color: #999;
-}
-
-/* Erro ao carregar campanha */
-.pressao-campaign-error {
-    color: #dc3545;
-    font-size: 12px;
-    margin-left: 5px;
-}
-
-/* CSS para Alvos */
-.pressao-alvos {
-    margin: 20px 0;
-    padding: 15px;
-    background: #f9f9f9;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-}
-
-.pressao-alvos-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.pressao-alvos-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.pressao-alvos-count {
-    background: #0073aa;
-    color: #fff;
-    padding: 2px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
+/* ============================================
+   LISTA DE AÇÕES — cada alvo é uma linha
+   ============================================ */
 .pressao-alvos-list {
     list-style: none;
-    padding: 0;
+    padding: 0.75rem;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .pressao-alvo-item {
-    padding: 12px 15px;
-    background: #fff;
-    border-radius: 6px;
-    margin-bottom: 8px;
-    border-left: 3px solid #0073aa;
-    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    background: var(--pressao-bg-card);
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-item);
+    padding: 0.875rem 1rem;
+    transition: border-color 0.15s ease;
+    border-left: none;
+    box-shadow: none;
 }
 
-.pressao-alvo-item:hover {
-    background: #f5f5f5;
-    transform: translateX(2px);
+.pressao-alvo-item:not(.action-done) {
+    cursor: pointer;
 }
 
+/* INFO — ícone + textos + seta em uma linha */
 .pressao-alvo-info {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+}
+
+/* Ícone quadrado preto do canal */
+.pressao-alvo-canal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 0;
+}
+
+.pressao-alvo-canal-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--pressao-icon-size);
+    height: var(--pressao-icon-size);
+    border-radius: 10px;
+    background: var(--pressao-bg-dark);
+    color: #fff;
+    font-size: 0;
+    text-transform: none;
+    padding: 0;
+    font-weight: 700;
+}
+
+/* Ícone textual dentro do badge */
+.pressao-alvo-canal-badge::before {
+    font-size: 1rem;
+}
+.pressao-alvo-canal-badge[data-canal="instagram"]::before { content: "📷"; }
+.pressao-alvo-canal-badge[data-canal="tiktok"]::before { content: "🎵"; }
+.pressao-alvo-canal-badge[data-canal="email"]::before { content: "✉️"; }
+.pressao-alvo-canal-badge[data-canal="whatsapp"]::before { content: "💬"; }
+.pressao-alvo-canal-badge[data-canal="telefone"]::before { content: "📞"; }
+
+/* Detalhes (nome + subtítulo) */
+.pressao-alvo-detalhes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    flex: 1;
+    min-width: 0;
 }
 
 .pressao-alvo-nome {
-    font-weight: 500;
-    color: #212529;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--pressao-text-primary);
+    line-height: 1.3;
 }
 
 .pressao-alvo-contato {
-    font-size: 13px;
-    color: #6c757d;
+    font-size: 0.8125rem;
+    color: var(--pressao-text-secondary);
+    line-height: 1.3;
 }
 
 .pressao-alvo-tipo {
-    font-size: 11px;
-    color: #999;
-    background: #f0f0f0;
-    padding: 1px 8px;
-    border-radius: 10px;
+    font-size: 0.75rem;
+    color: var(--pressao-text-muted);
+    background: none;
+    padding: 0;
+    border-radius: 0;
 }
 
-.pressao-alvo-status {
-    font-size: 14px;
+/* Botão de ação — seta circular à direita */
+.pressao-alvo-actions {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
 }
 
-.pressao-alvo-metadados {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #e0e0e0;
-}
-
-.pressao-alvo-metadados pre {
-    margin: 5px 0 0 0;
-    font-size: 11px;
-    color: #666;
-    background: #f5f5f5;
-    padding: 8px;
-    border-radius: 4px;
-    max-height: 100px;
-    overflow: auto;
-}
-
-.pressao-alvo-metadados small {
-    font-size: 11px;
-    color: #999;
-}
-
-/* Botão de ação */
-.pressao-action-button {
-    padding: 6px 16px;
-    background: #0073aa;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 500;
+.pressao-action-button,
+.pressao-action-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--pressao-border);
+    background: transparent;
+    color: var(--pressao-text-primary);
+    font-size: 0;
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.1s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    padding: 0;
 }
 
-.pressao-action-button:hover {
-    background: #005a87;
+.pressao-action-button::after,
+.pressao-action-toggle::after {
+    content: "→";
+    font-size: 1rem;
+    color: inherit;
 }
 
-.pressao-action-button:active {
-    transform: scale(0.95);
+.pressao-action-button:hover,
+.pressao-action-toggle:hover {
+    background: var(--pressao-bg-dark);
+    border-color: var(--pressao-bg-dark);
+    color: #fff;
 }
 
 .pressao-action-button:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
-/* Ação realizada */
+/* ============================================
+   ESTADO — AÇÃO REALIZADA (check verde)
+   ============================================ */
+.pressao-alvo-item.action-done {
+    border-color: var(--pressao-border);
+    opacity: 1;
+    border-left: none;
+}
+
 .pressao-action-done {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: #d4edda;
-    color: #155724;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 500;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--pressao-accent-green);
+    color: #fff;
+    font-size: 0;
+    padding: 0;
+    gap: 0;
+    border: none;
+}
+
+.pressao-action-done::after {
+    content: "✓";
+    font-size: 1.125rem;
+    font-weight: 700;
 }
 
 .pressao-action-time {
-    font-size: 11px;
-    color: #6c757d;
-    font-weight: 400;
+    display: none;
 }
 
-/* Item com ação realizada */
-.pressao-alvo-item.action-done {
-    border-left-color: #28a745;
+/* ============================================
+   ESTADO — PENDENTE (aguardando confirmação)
+   ============================================ */
+.pressao-alvo-item.action-pending {
+    border-color: var(--pressao-border);
+    background: var(--pressao-bg-card);
+}
+
+.pressao-alvo-item.action-pending .pressao-alvo-nome {
+    color: var(--pressao-text-primary);
+}
+
+/* ============================================
+   AÇÃO MANUAL — mensagem, copiar, abrir, confirmar
+   (Layout 2 — Instagram/TikTok)
+   ============================================ */
+.pressao-action-message {
+    margin-top: 1rem;
+    margin-bottom: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-input);
+    background: var(--pressao-bg-card);
+}
+
+.pressao-action-message p {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    color: var(--pressao-text-secondary);
+    line-height: 1.5;
+}
+
+.pressao-copy-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--pressao-radius-btn);
+    border: none;
+    background: var(--pressao-bg-dark);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.pressao-copy-message:hover {
+    opacity: 0.85;
+    background: var(--pressao-bg-dark);
+}
+
+.pressao-action-open-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--pressao-radius-btn);
+    border: none;
+    background: var(--pressao-bg-dark);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    margin-bottom: 0.75rem;
+}
+
+.pressao-action-open-link:hover {
     opacity: 0.85;
 }
 
-/* Notificações */
-.pressao-notification {
-    padding: 10px 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    font-size: 14px;
-    animation: pressao-slide-down 0.3s ease;
+.pressao-action-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--pressao-radius-btn);
+    border: 1px solid var(--pressao-border);
+    background: var(--pressao-bg-card);
+    color: var(--pressao-text-primary);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
 }
 
-.pressao-notification-success {
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
+.pressao-action-confirm:hover {
+    background: var(--pressao-border-light);
 }
 
-.pressao-notification-error {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
+.pressao-action-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-@keyframes pressao-slide-down {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.pressao-action-pending {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--pressao-text-secondary);
+    text-align: center;
 }
 
-/* Responsivo */
-@media (max-width: 480px) {
-    .pressao-alvo-info {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-    
-    .pressao-alvo-actions {
-        width: 100%;
-    }
-    
-    .pressao-action-button,
-    .pressao-action-done {
-        width: 100%;
-        text-align: center;
-        justify-content: center;
-    }
+/* ============================================
+   TOGGLE "VER MENSAGEM" (Layout 3 — E-mail)
+   ============================================ */
+.pressao-alvo-template {
+    margin-top: 0.75rem;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
 }
 
+.pressao-template-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-input);
+    background: var(--pressao-bg-card);
+    color: var(--pressao-accent-orange);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pressao-template-toggle::after {
+    content: "▾";
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+}
+
+[data-template-open="true"] .pressao-template-toggle::after {
+    transform: rotate(180deg);
+}
+
+.pressao-template-toggle:hover {
+    background: var(--pressao-border-light);
+}
+
+.pressao-alvo-template > summary {
+    display: none;
+}
+
+.pressao-alvo-template-corpo {
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--pressao-text-secondary);
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-input);
+}
+
+/* ============================================
+   FORMULÁRIO DE ATIVISTA (Layout 3 — E-mail)
+   ============================================ */
 .pressao-ativista-form {
-    margin-top: 10px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    border: 1px solid #e9ecef;
+    margin-top: 1rem;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
 }
 
 .pressao-ativista-form .pressao-form-group {
-    margin-bottom: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.pressao-ativista-form .pressao-form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--pressao-text-primary);
+    margin-bottom: 0.25rem;
 }
 
 .pressao-ativista-form .pressao-form-group input {
     width: 100%;
-    padding: 6px 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 13px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-input);
+    font-size: 0.9375rem;
+    color: var(--pressao-text-primary);
+    background: var(--pressao-bg-card);
+    box-sizing: border-box;
 }
 
 .pressao-ativista-form .pressao-form-group input:focus {
     outline: none;
-    border-color: #0073aa;
-    box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.1);
+    border-color: var(--pressao-text-primary);
+    box-shadow: none;
 }
 
 .pressao-ativista-form .pressao-action-submit {
     width: 100%;
-    padding: 8px;
-    background: #28a745;
+    padding: 0.875rem 1.25rem;
+    background: var(--pressao-bg-dark);
     color: #fff;
     border: none;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: var(--pressao-radius-btn);
+    font-size: 0.9375rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: opacity 0.15s ease;
 }
 
 .pressao-ativista-form .pressao-action-submit:hover {
-    background: #218838;
+    opacity: 0.85;
+    background: var(--pressao-bg-dark);
 }
 
 .pressao-ativista-form .pressao-action-submit:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
-.pressao-action-toggle {
-    padding: 6px 16px;
-    background: #0073aa;
+/* ============================================
+   PROGRESSO — rodapé escuro
+   (Layout 1 & 4 — "Pressione para impactar")
+   ============================================ */
+.pressao-progresso {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: var(--pressao-max-width);
+    margin: 0 auto;
+    padding: 1rem 1.25rem;
+    background: var(--pressao-bg-dark);
+    border-radius: 0 0 var(--pressao-radius-card) var(--pressao-radius-card);
+    box-sizing: border-box;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.pressao-progresso-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
     color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.2s ease;
+    text-transform: none;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-.pressao-action-toggle:hover {
-    background: #005a87;
+.pressao-progresso-text {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    white-space: nowrap;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
-/* Overlay do Modal */
+.pressao-progresso-track {
+    width: 100%;
+    height: 0.5rem;
+    background: #374151;
+    border-radius: 999px;
+    overflow: hidden;
+    order: 1;
+}
+
+.pressao-progresso-bar {
+    height: 100%;
+    width: 0;
+    background: var(--pressao-accent-green);
+    border-radius: 999px;
+    transition: width 0.45s ease;
+}
+
+/* ============================================
+   NOTIFICAÇÕES
+   ============================================ */
+.pressao-notification {
+    padding: 0.75rem 1rem;
+    border-radius: var(--pressao-radius-item);
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    animation: pressao-slide-down 0.3s ease;
+}
+
+.pressao-notification-success {
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.pressao-notification-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.pressao-notification-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+}
+
+@keyframes pressao-slide-down {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   MODAL DE CONFIRMAÇÃO DE IDENTIDADE
+   ============================================ */
 .pressao-modal-overlay {
     position: fixed;
     top: 0;
@@ -348,362 +572,106 @@
     justify-content: center;
     align-items: center;
     z-index: 999999;
-    animation: pressao-fade-in 0.3s ease;
+    animation: pressao-fade-in 0.2s ease;
 }
 
-/* Modal */
 .pressao-modal {
-    background: #fff;
-    border-radius: 12px;
-    max-width: 480px;
+    font-family: var(--pressao-font-family);
+    background: var(--pressao-bg-card);
+    border-radius: var(--pressao-radius-card);
+    max-width: 360px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: pressao-slide-up 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    animation: pressao-slide-up 0.25s ease;
 }
 
-.pressao-modal-small {
-    max-width: 400px;
-}
+.pressao-modal-small { max-width: 340px; }
 
 .pressao-modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #e9ecef;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--pressao-border);
 }
 
 .pressao-modal-header h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #212529;
-}
-
-.pressao-modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: #999;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    transition: color 0.2s ease;
-}
-
-.pressao-modal-close:hover {
-    color: #333;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--pressao-text-primary);
 }
 
 .pressao-modal-body {
-    padding: 24px;
+    padding: 1.5rem;
 }
 
 .pressao-modal-body p {
-    margin: 0 0 16px 0;
-    color: #6c757d;
-}
-
-/* Informações do Ativista */
-.pressao-ativista-info {
-    background: #f8f9fa;
-    padding: 16px;
-    border-radius: 8px;
-    margin: 0 0 20px 0;
-    border-left: 3px solid #0073aa;
-}
-
-.pressao-ativista-info p {
-    margin: 4px 0;
-}
-
-.pressao-ativista-info p:first-child {
-    font-size: 16px;
-    color: #212529;
-}
-
-.pressao-ativista-info p:last-child {
-    margin-bottom: 0;
-}
-
-/* Ações do Modal */
-.pressao-modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-.pressao-modal-btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.pressao-modal-btn-yes {
-    background: #0073aa;
-    color: #fff;
-}
-
-.pressao-modal-btn-yes:hover {
-    background: #005a87;
-}
-
-.pressao-modal-btn-no {
-    background: #e9ecef;
-    color: #495057;
-}
-
-.pressao-modal-btn-no:hover {
-    background: #dee2e6;
-}
-
-.pressao-modal-submit {
-    width: 100%;
-    padding: 12px;
-    background: #28a745;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s ease;
-}
-
-.pressao-modal-submit:hover {
-    background: #218838;
-}
-
-/* Animações */
-@keyframes pressao-fade-in {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes pressao-slide-up {
-    from {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* Tema Escuro */
-.pressao-theme-dark .pressao-modal {
-    background: #1a1a1a;
-}
-
-.pressao-theme-dark .pressao-modal-header {
-    border-bottom-color: #333;
-}
-
-.pressao-theme-dark .pressao-modal-header h3 {
-    color: #fff;
-}
-
-.pressao-theme-dark .pressao-modal-body p {
-    color: #aaa;
-}
-
-.pressao-theme-dark .pressao-ativista-info {
-    background: #2c2c2c;
-    border-left-color: #0073aa;
-}
-
-.pressao-theme-dark .pressao-ativista-info p:first-child {
-    color: #fff;
-}
-
-.pressao-theme-dark .pressao-ativista-info p {
-    color: #ccc;
+    margin: 0 0 1rem;
+    color: var(--pressao-text-secondary);
+    font-size: 0.875rem;
 }
 
 .pressao-ativista-info {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin: 0 0 20px 0;
-    border-left: 3px solid #0073aa;
+    background: var(--pressao-border-light);
+    padding: 1rem;
+    border-radius: var(--pressao-radius-item);
+    margin: 0 0 1.25rem;
+    border-left: none;
     text-align: center;
 }
 
 .pressao-ativista-info p {
     margin: 0;
-    font-size: 18px;
+    font-size: 1rem;
 }
 
 .pressao-ativista-info p strong {
-    color: #212529;
+    color: var(--pressao-text-primary);
 }
 
-/* Tema Escuro */
-.pressao-theme-dark .pressao-ativista-info {
-    background: #2c2c2c;
-    border-left-color: #0073aa;
+.pressao-modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: stretch;
 }
 
-.pressao-theme-dark .pressao-ativista-info p strong {
-    color: #ffffff;
-}
-
-.pressao-theme-dark .pressao-ativista-info p {
-    color: #cccccc;
-}
-
-/* Botão de confirmação (ação manual) */
-.pressao-action-confirm {
-    padding: 6px 16px;
-    background: #ffc107;
-    color: #212529;
+.pressao-modal-btn {
+    flex: 1;
+    padding: 0.75rem;
     border: none;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    width: 100%;
-}
-
-.pressao-action-confirm:hover {
-    background: #e0a800;
-}
-
-.pressao-action-confirm:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Texto de pendência */
-.pressao-action-pending {
-    margin-top: 6px;
-    font-size: 11px;
-    color: #856404;
-    text-align: center;
-}
-
-/* Estado da ação - Pendente */
-.pressao-alvo-item.action-pending {
-    border-left-color: #ffc107;
-    background: #fff8e1;
-}
-
-.pressao-alvo-item.action-pending .pressao-alvo-nome {
-    color: #856404;
-}
-
-/* Tema escuro para pendente */
-.pressao-theme-dark .pressao-alvo-item.action-pending {
-    background: #2c2c2c;
-    border-left-color: #ffc107;
-}
-
-.pressao-theme-dark .pressao-alvo-item.action-pending .pressao-alvo-nome {
-    color: #ffd54f;
-}
-
-.pressao-theme-dark .pressao-action-confirm {
-    background: #ffc107;
-    color: #212529;
-}
-
-.pressao-theme-dark .pressao-action-confirm:hover {
-    background: #ffd54f;
-}
-
-.pressao-theme-dark .pressao-action-pending {
-    color: #ffd54f;
-}
-
-/* Notificação info */
-.pressao-notification-info {
-    background: #cce5ff;
-    border: 1px solid #b8daff;
-    color: #004085;
-}
-
-.pressao-theme-dark .pressao-notification-info {
-    background: #1a2a3a;
-    border-color: #2a4a6a;
-    color: #8ab4f8;
-}
-
-.pressao-alvo-canal {
-    display: inline-block;
-    margin-left: 8px;
-}
-
-.pressao-alvo-canal-badge {
-    display: inline-block;
-    padding: 1px 10px;
-    border-radius: 12px;
-    font-size: 10px;
+    border-radius: var(--pressao-radius-btn);
+    font-size: 0.875rem;
     font-weight: 600;
-    text-transform: uppercase;
-    background: #e9ecef;
-    color: #495057;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
 }
 
-/* Cores por canal */
-.pressao-alvo-canal-badge[data-canal="email"] {
-    background: #d4edda;
-    color: #155724;
+.pressao-modal-btn-yes {
+    background: var(--pressao-bg-dark);
+    color: #fff;
 }
 
-.pressao-alvo-canal-badge[data-canal="whatsapp"] {
-    background: #cce5ff;
-    color: #004085;
+.pressao-modal-btn-yes:hover { opacity: 0.85; }
+
+.pressao-modal-btn-no {
+    background: var(--pressao-border-light);
+    color: var(--pressao-text-primary);
 }
 
-.pressao-alvo-canal-badge[data-canal="sms"] {
-    background: #fff3cd;
-    color: #856404;
+.pressao-modal-btn-no:hover { background: var(--pressao-border); }
+
+@keyframes pressao-fade-in {
+    from { opacity: 0; } to { opacity: 1; }
 }
 
-.pressao-alvo-canal-badge[data-canal="telefone"] {
-    background: #f8d7da;
-    color: #721c24;
+@keyframes pressao-slide-up {
+    from { transform: translateY(16px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
 }
 
-/* Tema escuro */
-.pressao-theme-dark .pressao-alvo-canal-badge {
-    background: #2c2c2c;
-    color: #ddd;
-}
-
-.pressao-theme-dark .pressao-alvo-canal-badge[data-canal="email"] {
-    background: #1e3a2a;
-    color: #8fdfb2;
-}
-
-.pressao-theme-dark .pressao-alvo-canal-badge[data-canal="whatsapp"] {
-    background: #1a2a3a;
-    color: #8ab4f8;
-}
-
-.pressao-theme-dark .pressao-alvo-canal-badge[data-canal="instagram"] {
-    background: #cb51cf;
-    color: #f3f3f3;
-}
-
-.pressao-theme-dark .pressao-alvo-canal-badge[data-canal="telefone"] {
-    background: #3a1a1a;
-    color: #df8f8f;
-}
-
-/* Contador de ações confirmadas */
+/* ============================================
+   CONTADOR DE AÇÕES CONFIRMADAS
+   ============================================ */
 .pressao-acoes-counter {
     display: flex;
     flex-direction: column;
@@ -717,72 +685,447 @@
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+    color: var(--pressao-text-primary);
 }
 
 .pressao-acoes-label {
     font-size: 0.875rem;
-    color: #666;
+    color: var(--pressao-text-secondary);
     text-transform: lowercase;
 }
 
-/* Progresso pessoal do ativista (cookie) */
-.pressao-progresso {
+/* ============================================
+   CANDIDATOS — avatares inline
+   (Layout 1 — "Ver +10 candidatos")
+   ============================================ */
+.pressao-candidatos {
+    max-width: var(--pressao-max-width);
+    margin: 1rem auto 0.5rem;
+    padding: 0 0.75rem;
+}
+
+.pressao-candidatos-title {
+    display: none;
+}
+
+.pressao-candidatos-grid {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 28rem;
-    padding: 0.75rem 0;
+    align-items: center;
+    gap: 0;
 }
 
-.pressao-progresso-track {
-    width: 100%;
-    height: 0.75rem;
-    background: #e5e7eb;
-    border-radius: 999px;
+.pressao-candidato-card {
+    overflow: visible;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--pressao-border-light);
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    margin-left: -8px;
+    position: relative;
+}
+
+.pressao-candidato-card:first-child {
+    margin-left: 0;
+}
+
+/* Primeiro avatar por cima do próximo */
+.pressao-candidato-card:nth-child(1) { z-index: 20; }
+.pressao-candidato-card:nth-child(2) { z-index: 19; }
+.pressao-candidato-card:nth-child(3) { z-index: 18; }
+.pressao-candidato-card:nth-child(4) { z-index: 17; }
+.pressao-candidato-card:nth-child(5) { z-index: 16; }
+.pressao-candidato-card:nth-child(6) { z-index: 15; }
+.pressao-candidato-card:nth-child(7) { z-index: 14; }
+.pressao-candidato-card:nth-child(8) { z-index: 13; }
+.pressao-candidato-card:nth-child(9) { z-index: 12; }
+.pressao-candidato-card:nth-child(10) { z-index: 11; }
+.pressao-candidato-card:nth-child(n+11) { z-index: 1; }
+
+.pressao-candidato-image {
+    aspect-ratio: 1;
     overflow: hidden;
-}
-
-.pressao-progresso-bar {
+    border-radius: 50%;
+    background: var(--pressao-border-light);
+    width: 100%;
     height: 100%;
-    width: 0;
-    background: #16a34a;
-    border-radius: 999px;
-    transition: width 0.45s ease;
 }
 
-.pressao-progresso-text {
-    font-size: 0.95rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: #166534;
+.pressao-candidato-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
-.pressao-progresso-label {
+.pressao-candidato-content {
+    display: none;
+}
+
+/* ============================================
+   METADADOS (hidden by default no layout final)
+   ============================================ */
+.pressao-alvo-metadados {
+    display: none;
+}
+
+/* Cache info */
+.pressao-cache-info {
+    display: none;
+}
+
+/* ============================================
+   ERROS
+   ============================================ */
+.pressao-error {
+    font-family: var(--pressao-font-family);
     font-size: 0.875rem;
-    color: #666;
-    text-transform: lowercase;
+    color: #991b1b;
+    padding: 0.75rem 1rem;
+    background: #fef2f2;
+    border-radius: var(--pressao-radius-item);
+    border: 1px solid #fecaca;
 }
 
-/* Preview do template sorteado (show_template="yes") */
-.pressao-alvo-template {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.375rem;
-    background: #f9fafb;
+.pressao-empty {
+    font-family: var(--pressao-font-family);
+    font-size: 0.875rem;
+    color: var(--pressao-text-secondary);
+    text-align: center;
+    padding: 2rem 1rem;
 }
 
-.pressao-alvo-template > summary {
+/* ============================================
+   RESPONSIVO
+   ============================================ */
+@media (max-width: 480px) {
+    .pressao-alvos {
+        margin: 0.75rem auto;
+    }
+
+    .pressao-alvo-info {
+        gap: 0.5rem;
+    }
+}
+
+/* Progresso fixo no rodapé (mobile) */
+@media (max-width: 767px) {
+    .pressao-progresso {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        border-radius: 0;
+        z-index: 99999;
+    }
+
+    body:has(.pressao-progresso) {
+        padding-bottom: 5.5rem;
+    }
+}
+
+/* ============================================
+   WIDGET, FORM, LIST — header minimalista
+   ============================================ */
+.pressao-widget-header {
+    display: inline;
+}
+
+.pressao-widget-name { display: inline; }
+.pressao-widget-campaign { display: inline; }
+.pressao-campaign-separator { display: inline; margin: 0 5px; color: var(--pressao-text-muted); }
+.pressao-campaign-name { display: inline; font-weight: 500; }
+.pressao-campaign-loading { display: inline-block; margin-left: 5px; font-size: 12px; color: var(--pressao-text-muted); }
+.pressao-campaign-error { color: #991b1b; font-size: 12px; margin-left: 5px; }
+
+.pressao-widget-content,
+.pressao-form-content,
+.pressao-list-content { display: none; }
+
+.pressao-widget-content.active,
+.pressao-form-content.active,
+.pressao-list-content.active { display: block; }
+
+/* ============================================
+   OVERLAY DE AÇÃO — modal (desktop) / drawer (mobile)
+   ============================================ */
+.pressao-action-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--pressao-font-family);
+}
+
+.pressao-action-overlay[hidden] {
+    display: none !important;
+}
+
+.pressao-action-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.pressao-action-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--pressao-bg-card);
+    border-radius: var(--pressao-radius-card);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    padding: 1.25rem 1.5rem 1.5rem;
+    box-sizing: border-box;
+    animation: pressao-slide-up 0.25s ease;
+}
+
+.pressao-action-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.pressao-action-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--pressao-border);
+    border-radius: 50%;
+    background: var(--pressao-bg-card);
+    color: var(--pressao-text-primary);
+    font-size: 1.125rem;
+    line-height: 1;
     cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #374151;
+    flex-shrink: 0;
+    padding: 0;
 }
 
-.pressao-alvo-template-corpo {
-    margin-top: 0.5rem;
+.pressao-action-back:hover {
+    background: var(--pressao-border-light);
+}
+
+.pressao-action-panel-channel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--pressao-text-primary);
+}
+
+.pressao-action-panel-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--pressao-text-primary);
+    line-height: 1.3;
+}
+
+.pressao-action-panel-subtitle {
+    margin: 0 0 1.25rem;
+    font-size: 0.875rem;
+    color: var(--pressao-text-secondary);
+    line-height: 1.45;
+}
+
+.pressao-action-field-label {
+    display: block;
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--pressao-text-primary);
+}
+
+.pressao-action-message-textarea {
+    width: 100%;
+    min-height: 8rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-input);
+    background: var(--pressao-bg-card);
+    color: var(--pressao-text-secondary);
     font-size: 0.875rem;
     line-height: 1.5;
-    color: #4b5563;
+    resize: none;
+    box-sizing: border-box;
+    margin-bottom: 1rem;
+    font-family: inherit;
+}
+
+.pressao-action-message-textarea[readonly] {
+    cursor: default;
+}
+
+.pressao-copy-open-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    border: none;
+    border-radius: var(--pressao-radius-btn);
+    background: var(--pressao-bg-dark);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+}
+
+.pressao-copy-open-btn:hover {
+    opacity: 0.85;
+}
+
+.pressao-copy-open-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pressao-confirm-section {
+    padding-top: 1rem;
+    border-top: 1px solid var(--pressao-border);
+}
+
+.pressao-confirm-section-title {
+    margin: 0 0 0.35rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--pressao-text-primary);
+}
+
+.pressao-confirm-section-text {
+    margin: 0 0 1rem;
+    font-size: 0.8125rem;
+    color: var(--pressao-text-secondary);
+    line-height: 1.45;
+}
+
+.pressao-confirm-continue {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-btn);
+    background: var(--pressao-bg-card);
+    color: var(--pressao-text-primary);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pressao-confirm-continue:hover {
+    background: var(--pressao-border-light);
+}
+
+.pressao-confirm-continue:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* E-mail no overlay */
+.pressao-email-template {
+    margin-bottom: 1.25rem;
+}
+
+.pressao-email-template .pressao-template-toggle {
+    width: 100%;
+}
+
+.pressao-email-template .pressao-alvo-template-corpo {
+    margin-top: 0.5rem;
+}
+
+.pressao-overlay-form .pressao-form-group {
+    margin-bottom: 0.75rem;
+}
+
+.pressao-overlay-form .pressao-form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--pressao-text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.pressao-overlay-form .pressao-form-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--pressao-border);
+    border-radius: var(--pressao-radius-input);
+    font-size: 0.9375rem;
+    color: var(--pressao-text-primary);
+    background: var(--pressao-bg-card);
+    box-sizing: border-box;
+}
+
+.pressao-overlay-form .pressao-form-group input:focus {
+    outline: none;
+    border-color: var(--pressao-text-primary);
+}
+
+.pressao-overlay-submit {
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    margin-top: 0.5rem;
+    background: var(--pressao-bg-dark);
+    color: #fff;
+    border: none;
+    border-radius: var(--pressao-radius-btn);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pressao-overlay-submit:hover {
+    opacity: 0.85;
+}
+
+.pressao-overlay-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pressao-overlay-error {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    color: #991b1b;
+}
+
+@media (max-width: 767px) {
+    .pressao-action-overlay {
+        align-items: stretch;
+        justify-content: stretch;
+    }
+
+    .pressao-action-overlay-backdrop {
+        background: transparent;
+    }
+
+    .pressao-action-panel {
+        max-width: none;
+        max-height: none;
+        height: 100%;
+        border-radius: 0;
+        box-shadow: none;
+        animation: pressao-drawer-in 0.28s ease;
+    }
+}
+
+@keyframes pressao-drawer-in {
+    from { transform: translateX(100%); opacity: 0.6; }
+    to   { transform: translateX(0); opacity: 1; }
 }

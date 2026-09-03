@@ -36,6 +36,10 @@ class PressaoPlugin_Admin {
         register_setting('pressao_settings_group', 'pressao_campaign_id');
         register_setting('pressao_settings_group', 'pressao_widget_title');
         register_setting('pressao_settings_group', 'pressao_session_duration');
+        register_setting('pressao_settings_group', 'pressao_candidatos', [
+            'sanitize_callback' => [$this, 'sanitize_candidatos'],
+            'default' => [],
+        ]);
         
         // Seção: Autenticação
         add_settings_section(
@@ -157,6 +161,22 @@ class PressaoPlugin_Admin {
             'pressao-settings',
             'pressao_ativista_section'
         );
+
+        // Seção: Candidatos
+        add_settings_section(
+            'pressao_candidatos_section',
+            __('Configurações de Candidatos', 'pressao-plugin'),
+            null,
+            'pressao-settings'
+        );
+
+        add_settings_field(
+            'pressao_candidatos',
+            __('Candidatos', 'pressao-plugin'),
+            [$this, 'render_candidatos_field'],
+            'pressao-settings',
+            'pressao_candidatos_section'
+        );
     }
     
     public function render_text_field($args) {
@@ -209,6 +229,7 @@ class PressaoPlugin_Admin {
                     <li><code>[pressao_form]</code> - <?php esc_html_e('Apenas formulário', 'pressao-plugin'); ?></li>
                     <li><code>[pressao_list]</code> - <?php esc_html_e('Apenas lista', 'pressao-plugin'); ?></li>
                     <li><code>[pressao_alvos]</code> - <?php esc_html_e('Lista de alvos com ações', 'pressao-plugin'); ?></li>
+                    <li><code>[pressao_candidatos]</code> - <?php esc_html_e('Bloco de candidatos configurado no admin', 'pressao-plugin'); ?></li>
                 </ul>
                 
                 <p><?php esc_html_e('Exemplos:', 'pressao-plugin'); ?></p>
@@ -219,6 +240,8 @@ class PressaoPlugin_Admin {
                 <code>[pressao_list limit="5"]</code>
                 <br>
                 <code>[pressao_alvos campaign="123" show_ativista_form="yes"]</code>
+                <br>
+                <code>[pressao_candidatos title="Conheça os candidatos"]</code>
                 
                 <div class="pressao-lgpd-info" style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 6px; border-left: 4px solid #0073aa;">
                     <h3 style="margin-top: 0;"><?php esc_html_e('Sobre a LGPD', 'pressao-plugin'); ?></h3>
@@ -269,6 +292,140 @@ class PressaoPlugin_Admin {
         </select>
         <p class="description"><?php esc_html_e('Tempo que a sessão do ativista permanece ativa no navegador.', 'pressao-plugin'); ?></p>
         <?php
+    }
+
+    public function render_candidatos_field() {
+        $candidatos = get_option('pressao_candidatos', []);
+        if (!is_array($candidatos) || empty($candidatos)) {
+            $candidatos = [[]];
+        }
+        ?>
+        <div class="pressao-candidatos-admin" data-next-index="<?php echo esc_attr(count($candidatos)); ?>">
+            <div class="pressao-candidatos-list">
+                <?php foreach ($candidatos as $index => $candidato) : ?>
+                    <?php $this->render_candidato_admin_item((int) $index, $candidato); ?>
+                <?php endforeach; ?>
+            </div>
+            <button type="button" class="button pressao-add-candidato">
+                <?php esc_html_e('Adicionar candidato', 'pressao-plugin'); ?>
+            </button>
+            <p class="description">
+                <?php esc_html_e('As imagens usam a Biblioteca de Mídia do WordPress. Se o WordPress enviar mídias para S3 no futuro, o plugin continuará usando o mesmo attachment ID.', 'pressao-plugin'); ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    private function render_candidato_admin_item($index, $candidato) {
+        $candidato = is_array($candidato) ? $candidato : [];
+        $imagem_id = absint($candidato['imagem_id'] ?? 0);
+        $imagem_url = $imagem_id ? wp_get_attachment_image_url($imagem_id, 'thumbnail') : '';
+        ?>
+        <div class="pressao-candidato-admin-item" data-index="<?php echo esc_attr($index); ?>">
+            <p>
+                <label>
+                    <?php esc_html_e('Nome', 'pressao-plugin'); ?><br>
+                    <input type="text"
+                           name="pressao_candidatos[<?php echo esc_attr($index); ?>][nome]"
+                           value="<?php echo esc_attr($candidato['nome'] ?? ''); ?>"
+                           class="regular-text" />
+                </label>
+            </p>
+            <p>
+                <label>
+                    <?php esc_html_e('Cargo', 'pressao-plugin'); ?><br>
+                    <input type="text"
+                           name="pressao_candidatos[<?php echo esc_attr($index); ?>][cargo]"
+                           value="<?php echo esc_attr($candidato['cargo'] ?? ''); ?>"
+                           class="regular-text" />
+                </label>
+            </p>
+            <p>
+                <label>
+                    <?php esc_html_e('Partido/organização', 'pressao-plugin'); ?><br>
+                    <input type="text"
+                           name="pressao_candidatos[<?php echo esc_attr($index); ?>][partido]"
+                           value="<?php echo esc_attr($candidato['partido'] ?? ''); ?>"
+                           class="regular-text" />
+                </label>
+            </p>
+            <p>
+                <label>
+                    <?php esc_html_e('Link', 'pressao-plugin'); ?><br>
+                    <input type="url"
+                           name="pressao_candidatos[<?php echo esc_attr($index); ?>][link_url]"
+                           value="<?php echo esc_url($candidato['link_url'] ?? ''); ?>"
+                           class="regular-text" />
+                </label>
+            </p>
+            <p>
+                <label>
+                    <?php esc_html_e('Descrição', 'pressao-plugin'); ?><br>
+                    <textarea name="pressao_candidatos[<?php echo esc_attr($index); ?>][descricao]"
+                              rows="3"
+                              class="large-text"><?php echo esc_textarea($candidato['descricao'] ?? ''); ?></textarea>
+                </label>
+            </p>
+            <div class="pressao-candidato-image-field">
+                <input type="hidden"
+                       class="pressao-candidato-image-id"
+                       name="pressao_candidatos[<?php echo esc_attr($index); ?>][imagem_id]"
+                       value="<?php echo esc_attr($imagem_id); ?>" />
+                <div class="pressao-candidato-image-preview">
+                    <?php if ($imagem_url) : ?>
+                        <img src="<?php echo esc_url($imagem_url); ?>" alt="" style="max-width: 96px; height: auto;" />
+                    <?php endif; ?>
+                </div>
+                <button type="button" class="button pressao-select-candidato-image">
+                    <?php esc_html_e('Selecionar imagem', 'pressao-plugin'); ?>
+                </button>
+                <button type="button" class="button pressao-remove-candidato-image">
+                    <?php esc_html_e('Remover imagem', 'pressao-plugin'); ?>
+                </button>
+            </div>
+            <p>
+                <button type="button" class="button link-delete pressao-remove-candidato">
+                    <?php esc_html_e('Remover candidato', 'pressao-plugin'); ?>
+                </button>
+            </p>
+            <hr>
+        </div>
+        <?php
+    }
+
+    public function sanitize_candidatos($value) {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $sanitized = [];
+        foreach ($value as $candidato) {
+            if (!is_array($candidato)) {
+                continue;
+            }
+
+            $nome = sanitize_text_field($candidato['nome'] ?? '');
+            $cargo = sanitize_text_field($candidato['cargo'] ?? '');
+            $partido = sanitize_text_field($candidato['partido'] ?? '');
+            $descricao = sanitize_textarea_field($candidato['descricao'] ?? '');
+            $link_url = esc_url_raw($candidato['link_url'] ?? '');
+            $imagem_id = absint($candidato['imagem_id'] ?? 0);
+
+            if ($nome === '' && $cargo === '' && $partido === '' && $descricao === '' && !$imagem_id) {
+                continue;
+            }
+
+            $sanitized[] = [
+                'nome' => $nome,
+                'cargo' => $cargo,
+                'partido' => $partido,
+                'descricao' => $descricao,
+                'link_url' => $link_url,
+                'imagem_id' => $imagem_id,
+            ];
+        }
+
+        return $sanitized;
     }
 }
 

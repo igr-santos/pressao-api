@@ -327,7 +327,7 @@ class PressaoPlugin_API {
         }
         
         // Valida canal permitido
-        $canais_permitidos = ['email', 'telefone', 'instagram', 'whatsapp'];
+        $canais_permitidos = ['email', 'telefone', 'instagram', 'whatsapp', 'tiktok'];
         if (!in_array($dados['canal'], $canais_permitidos)) {
             return new WP_Error(
                 'invalid_data',

@@ -21,6 +21,7 @@ class PressaoPlugin_Shortcode {
         add_shortcode('pressao_alvos', [$this, 'render_alvos']);
         add_shortcode('pressao_contador', [$this, 'render_contador']);
         add_shortcode('pressao_progresso', [$this, 'render_progresso']);
+        add_shortcode('pressao_candidatos', [$this, 'render_candidatos']);
     }
     
     /**
@@ -249,43 +250,52 @@ class PressaoPlugin_Shortcode {
                     $alvo_template_id = $alvo_template && !empty($alvo_template['id'])
                         ? $alvo_template['id']
                         : $template_id;
+                    $canal_labels = $this->get_canal_list_labels($canal_alvo);
+                    $usa_overlay = in_array($canal_alvo, ['email', 'instagram', 'tiktok'], true);
+                    $list_title = $canal_labels
+                        ? $canal_labels['title']
+                        : (isset($alvo['nome']) ? $alvo['nome'] : '');
+                    $list_subtitle = '';
+                    if ($canal_labels) {
+                        $list_subtitle = $canal_labels['subtitle'];
+                    } elseif ($show_contact === 'yes') {
+                        if (!empty($alvo['modo']) && $alvo['modo'] === 'agregado' && !empty($alvo['total_membros'])) {
+                            $list_subtitle = sprintf(
+                                _n('%d destinatário', '%d destinatários', (int) $alvo['total_membros'], 'pressao-plugin'),
+                                (int) $alvo['total_membros']
+                            );
+                        } elseif (!empty($alvo['contato'])) {
+                            $list_subtitle = $alvo['contato'];
+                        }
+                    }
+                    $template_titulo = $alvo_template && !empty($alvo_template['titulo'])
+                        ? $alvo_template['titulo']
+                        : '';
+                    $template_conteudo = $alvo_template && !empty($alvo_template['conteudo'])
+                        ? wp_strip_all_tags($alvo_template['conteudo'])
+                        : '';
                 ?>
                     <li class="pressao-alvo-item <?php echo $action_realizada ? 'action-done' : ''; ?>" 
                         data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
+                        data-alvo-nome="<?php echo esc_attr($alvo['nome'] ?? ''); ?>"
+                        data-contato="<?php echo esc_attr($alvo['contato'] ?? ''); ?>"
                         data-canal="<?php echo esc_attr($canal_alvo); ?>"
-                        data-template-id="<?php echo esc_attr($alvo_template_id); ?>">
+                        data-template-id="<?php echo esc_attr($alvo_template_id); ?>"
+                        data-template-titulo="<?php echo esc_attr($template_titulo); ?>"
+                        data-template-conteudo="<?php echo esc_attr($template_conteudo); ?>"
+                        data-total-membros="<?php echo esc_attr($alvo['total_membros'] ?? ''); ?>">
                         
                         <div class="pressao-alvo-info">
+                            <?php if (!empty($canal_alvo)) : ?>
+                                <span class="pressao-alvo-canal">
+                                    <span class="pressao-alvo-canal-badge" data-canal="<?php echo esc_attr($canal_alvo); ?>"></span>
+                                </span>
+                            <?php endif; ?>
+
                             <div class="pressao-alvo-detalhes">
-                                <strong class="pressao-alvo-nome"><?php echo esc_html($alvo['nome']); ?></strong>
-                                
-                                <?php if ($show_contact === 'yes') : ?>
-                                    <?php if (!empty($alvo['modo']) && $alvo['modo'] === 'agregado' && !empty($alvo['total_membros'])) : ?>
-                                    <span class="pressao-alvo-contato">
-                                        <?php
-                                        echo esc_html(
-                                            sprintf(
-                                                _n('%d destinatário', '%d destinatários', (int) $alvo['total_membros'], 'pressao-plugin'),
-                                                (int) $alvo['total_membros']
-                                            )
-                                        );
-                                        ?>
-                                        <span class="pressao-alvo-tipo">(<?php echo esc_html($canal_alvo); ?>)</span>
-                                    </span>
-                                    <?php elseif (!empty($alvo['contato'])) : ?>
-                                    <span class="pressao-alvo-contato">
-                                        <?php echo esc_html($alvo['contato']); ?>
-                                        <?php if (!empty($alvo['tipo_contato'])) : ?>
-                                            <span class="pressao-alvo-tipo">(<?php echo esc_html($alvo['tipo_contato']); ?>)</span>
-                                        <?php endif; ?>
-                                    </span>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                                
-                                <?php if (!empty($canal_alvo)) : ?>
-                                    <span class="pressao-alvo-canal">
-                                        <span class="pressao-alvo-canal-badge"><?php echo esc_html($canal_alvo); ?></span>
-                                    </span>
+                                <strong class="pressao-alvo-nome"><?php echo esc_html($list_title); ?></strong>
+                                <?php if ($list_subtitle !== '') : ?>
+                                    <span class="pressao-alvo-contato"><?php echo esc_html($list_subtitle); ?></span>
                                 <?php endif; ?>
                             </div>
                             
@@ -298,62 +308,59 @@ class PressaoPlugin_Shortcode {
                                                 <?php echo esc_html($this->format_action_time($action_state)); ?>
                                             </span>
                                         </span>
-                                    <?php else : ?>
-                                        <?php if ($show_ativista_form === 'yes') : ?>
-                                            <button type="button" 
-                                                    class="pressao-action-toggle"
-                                                    data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
-                                                    data-canal="<?php echo esc_attr($canal_alvo); ?>">
-                                                <?php echo esc_html($action_label); ?>
-                                            </button>
-                                            
-                                            <div class="pressao-ativista-form" style="display: none;">
-                                                <div class="pressao-form-group">
-                                                    <input type="text" 
-                                                           class="pressao-ativista-nome" 
-                                                           placeholder="<?php esc_attr_e('Seu nome', 'pressao-plugin'); ?>"
-                                                           required />
-                                                </div>
-                                                <div class="pressao-form-group">
-                                                    <input type="email" 
-                                                           class="pressao-ativista-email" 
-                                                           placeholder="<?php esc_attr_e('Seu email', 'pressao-plugin'); ?>" />
-                                                </div>
-                                                <div class="pressao-form-group">
-                                                    <input type="tel" 
-                                                           class="pressao-ativista-telefone" 
-                                                           placeholder="<?php esc_attr_e('Seu telefone', 'pressao-plugin'); ?>" />
-                                                </div>
-                                                <button type="button" 
-                                                        class="pressao-action-submit"
-                                                        data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
-                                                        data-campaign="<?php echo esc_attr($campanha_id); ?>"
-                                                        data-canal="<?php echo esc_attr($canal_alvo); ?>">
-                                                    <?php esc_html_e('Confirmar', 'pressao-plugin'); ?>
-                                                </button>
+                                    <?php elseif ($usa_overlay) : ?>
+                                        <button type="button"
+                                                class="pressao-action-button"
+                                                data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
+                                                data-campaign="<?php echo esc_attr($campanha_id); ?>"
+                                                data-canal="<?php echo esc_attr($canal_alvo); ?>">
+                                            <?php echo esc_html($action_label); ?>
+                                        </button>
+                                    <?php elseif ($show_ativista_form === 'yes') : ?>
+                                        <button type="button" 
+                                                class="pressao-action-toggle"
+                                                data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
+                                                data-canal="<?php echo esc_attr($canal_alvo); ?>">
+                                            <?php echo esc_html($action_label); ?>
+                                        </button>
+                                        
+                                        <div class="pressao-ativista-form" style="display: none;">
+                                            <div class="pressao-form-group">
+                                                <input type="text" 
+                                                       class="pressao-ativista-nome" 
+                                                       placeholder="<?php esc_attr_e('Seu nome', 'pressao-plugin'); ?>"
+                                                       required />
                                             </div>
-                                        <?php else : ?>
+                                            <div class="pressao-form-group">
+                                                <input type="email" 
+                                                       class="pressao-ativista-email" 
+                                                       placeholder="<?php esc_attr_e('Seu email', 'pressao-plugin'); ?>" />
+                                            </div>
+                                            <div class="pressao-form-group">
+                                                <input type="tel" 
+                                                       class="pressao-ativista-telefone" 
+                                                       placeholder="<?php esc_attr_e('Seu telefone', 'pressao-plugin'); ?>" />
+                                            </div>
                                             <button type="button" 
-                                                    class="pressao-action-button"
+                                                    class="pressao-action-submit"
                                                     data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
                                                     data-campaign="<?php echo esc_attr($campanha_id); ?>"
                                                     data-canal="<?php echo esc_attr($canal_alvo); ?>">
-                                                <?php echo esc_html($action_label); ?>
+                                                <?php esc_html_e('Confirmar', 'pressao-plugin'); ?>
                                             </button>
-                                        <?php endif; ?>
+                                        </div>
+                                    <?php else : ?>
+                                        <button type="button" 
+                                                class="pressao-action-button"
+                                                data-alvo-id="<?php echo esc_attr($alvo_id); ?>"
+                                                data-campaign="<?php echo esc_attr($campanha_id); ?>"
+                                                data-canal="<?php echo esc_attr($canal_alvo); ?>">
+                                            <?php echo esc_html($action_label); ?>
+                                        </button>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         </div>
-                        
-                        <?php if ($show_template === 'yes' && $alvo_template) : ?>
-                            <details class="pressao-alvo-template">
-                                <summary><?php echo esc_html($alvo_template['titulo']); ?></summary>
-                                <div class="pressao-alvo-template-corpo">
-                                    <?php echo wp_kses_post($alvo_template['conteudo']); ?>
-                                </div>
-                            </details>
-                        <?php endif; ?>
 
                         <?php if (!empty($alvo['metadados'])) : ?>
                             <div class="pressao-alvo-metadados">
@@ -382,6 +389,27 @@ class PressaoPlugin_Shortcode {
     private function get_alvo_action_state($alvo_id) {
         $actions = $this->get_acoes_from_cookie();
         return isset($actions[$alvo_id]) ? $actions[$alvo_id] : false;
+    }
+
+    /**
+     * Textos fixos da lista por canal (índice visual, não o nome do alvo).
+     */
+    private function get_canal_list_labels($canal) {
+        $labels = [
+            'tiktok' => [
+                'title' => __('TikTok', 'pressao-plugin'),
+                'subtitle' => __('Marque em um video estrategico', 'pressao-plugin'),
+            ],
+            'instagram' => [
+                'title' => __('Instagram', 'pressao-plugin'),
+                'subtitle' => __('Faça barulho nas redes sociais', 'pressao-plugin'),
+            ],
+            'email' => [
+                'title' => __('Email', 'pressao-plugin'),
+                'subtitle' => __('Envie diretamente para os alvos', 'pressao-plugin'),
+            ],
+        ];
+        return isset($labels[$canal]) ? $labels[$canal] : null;
     }
 
     /**
@@ -468,7 +496,7 @@ class PressaoPlugin_Shortcode {
     public function render_progresso($atts) {
         $atts = shortcode_atts([
             'campaign' => get_option('pressao_campaign_id', ''),
-            'label' => __('seu progresso', 'pressao-plugin'),
+            'label' => __('Pressione para impactar', 'pressao-plugin'),
             'class' => '',
             'id' => 'pressao-progresso-' . uniqid(),
         ], $atts, 'pressao_progresso');
@@ -521,9 +549,86 @@ class PressaoPlugin_Shortcode {
                  aria-valuenow="<?php echo esc_attr($done); ?>">
                 <div class="pressao-progresso-bar" style="width: <?php echo esc_attr($pct); ?>%;"></div>
             </div>
-            <span class="pressao-progresso-text"><?php echo esc_html($done . ' / ' . $total); ?></span>
+            <span class="pressao-progresso-text"><?php echo esc_html($done . ' de ' . $total); ?></span>
             <span class="pressao-progresso-label"><?php echo esc_html($atts['label']); ?></span>
         </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Renderiza o bloco de candidatos configurado no admin do plugin.
+     */
+    public function render_candidatos($atts) {
+        $atts = shortcode_atts([
+            'title' => __('Candidatos', 'pressao-plugin'),
+            'show_title' => 'yes',
+            'class' => '',
+            'id' => 'pressao-candidatos-' . uniqid(),
+        ], $atts, 'pressao_candidatos');
+
+        $candidatos = get_option('pressao_candidatos', []);
+        if (!is_array($candidatos) || empty($candidatos)) {
+            return '<p class="pressao-empty">' . esc_html__('Nenhum candidato configurado.', 'pressao-plugin') . '</p>';
+        }
+
+        ob_start();
+        ?>
+        <section id="<?php echo esc_attr($atts['id']); ?>"
+                 class="pressao-candidatos <?php echo esc_attr($atts['class']); ?>">
+            <?php if ($atts['show_title'] === 'yes') : ?>
+                <h3 class="pressao-candidatos-title"><?php echo esc_html($atts['title']); ?></h3>
+            <?php endif; ?>
+
+            <div class="pressao-candidatos-grid">
+                <?php foreach ($candidatos as $candidato) : ?>
+                    <?php
+                    $nome = $candidato['nome'] ?? '';
+                    $cargo = $candidato['cargo'] ?? '';
+                    $partido = $candidato['partido'] ?? '';
+                    $descricao = $candidato['descricao'] ?? '';
+                    $link_url = $candidato['link_url'] ?? '';
+                    $imagem_id = absint($candidato['imagem_id'] ?? 0);
+                    ?>
+                    <article class="pressao-candidato-card">
+                        <?php if ($imagem_id) : ?>
+                            <div class="pressao-candidato-image">
+                                <?php
+                                echo wp_get_attachment_image(
+                                    $imagem_id,
+                                    'medium',
+                                    false,
+                                    ['class' => 'pressao-candidato-img']
+                                );
+                                ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="pressao-candidato-content">
+                            <?php if ($nome) : ?>
+                                <h4 class="pressao-candidato-nome"><?php echo esc_html($nome); ?></h4>
+                            <?php endif; ?>
+
+                            <?php if ($cargo || $partido) : ?>
+                                <p class="pressao-candidato-meta">
+                                    <?php echo esc_html(trim($cargo . ($cargo && $partido ? ' - ' : '') . $partido)); ?>
+                                </p>
+                            <?php endif; ?>
+
+                            <?php if ($descricao) : ?>
+                                <p class="pressao-candidato-descricao"><?php echo esc_html($descricao); ?></p>
+                            <?php endif; ?>
+
+                            <?php if ($link_url) : ?>
+                                <a class="pressao-candidato-link" href="<?php echo esc_url($link_url); ?>">
+                                    <?php esc_html_e('Saiba mais', 'pressao-plugin'); ?>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
         <?php
         return ob_get_clean();
     }

@@ -82,7 +82,8 @@ final class PressaoPlugin {
             'pressao_client_secret' => '',
             'pressao_api_url' => '',
             'pressao_campaign_id' => '',
-            'pressao_widget_title' => 'Pressão Widget'
+            'pressao_widget_title' => 'Pressão Widget',
+            'pressao_candidatos' => []
         ];
         
         foreach ($defaults as $key => $value) {
@@ -114,7 +115,9 @@ final class PressaoPlugin {
                          has_shortcode($post->post_content, 'pressao_form') ||
                          has_shortcode($post->post_content, 'pressao_list') ||
                          has_shortcode($post->post_content, 'pressao_alvos') ||
-                         has_shortcode($post->post_content, 'pressao_contador');
+                         has_shortcode($post->post_content, 'pressao_contador') ||
+                         has_shortcode($post->post_content, 'pressao_progresso') ||
+                         has_shortcode($post->post_content, 'pressao_candidatos');
         
         if ($has_shortcode) {
             wp_enqueue_style(
@@ -157,13 +160,31 @@ final class PressaoPlugin {
         if (strpos($hook, 'pressao-settings') === false) {
             return;
         }
-        
-        wp_enqueue_style(
+
+        wp_enqueue_media();
+
+        $admin_css = PRESSAO_PLUGIN_DIR . 'assets/css/admin.css';
+        if (file_exists($admin_css)) {
+            wp_enqueue_style(
+                'pressao-admin',
+                PRESSAO_PLUGIN_URL . 'assets/css/admin.css',
+                [],
+                PRESSAO_PLUGIN_VERSION
+            );
+        }
+
+        wp_enqueue_script(
             'pressao-admin',
-            PRESSAO_PLUGIN_URL . 'assets/css/admin.css',
-            [],
-            PRESSAO_PLUGIN_VERSION
+            PRESSAO_PLUGIN_URL . 'assets/js/admin.js',
+            ['jquery'],
+            PRESSAO_PLUGIN_VERSION,
+            true
         );
+
+        wp_localize_script('pressao-admin', 'pressaoAdminData', [
+            'selectCandidateImage' => __('Selecionar imagem do candidato', 'pressao-plugin'),
+            'useThisImage' => __('Usar esta imagem', 'pressao-plugin'),
+        ]);
     }
 }
 

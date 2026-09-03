@@ -96,12 +96,31 @@ const CANAIS_QUE_REQUEREM_ATIVISTA = {
     email: ['email'],
     telefone: ['telefone'],
     whatsapp: ['telefone'],
-    instagram: []
+    instagram: [],
+    tiktok: []
+};
+
+const CANAIS_COM_OVERLAY = ['email', 'instagram', 'tiktok'];
+
+const CANAL_DISPLAY_NAMES = {
+    email: 'Email',
+    instagram: 'Instagram',
+    tiktok: 'TikTok',
+    whatsapp: 'WhatsApp',
+    telefone: 'Telefone'
 };
 
 function canalRequerAtivista(canal) {
     const campos = CANAIS_QUE_REQUEREM_ATIVISTA[canal];
     return campos && campos.length > 0;
+}
+
+function canalUsaOverlay(canal) {
+    return CANAIS_COM_OVERLAY.indexOf(canal) !== -1;
+}
+
+function canalDisplayName(canal) {
+    return CANAL_DISPLAY_NAMES[canal] || canal;
 }
 
 // ============================================
@@ -237,6 +256,63 @@ function getActionNonce(container) {
     return '';
 }
 
+function setActionNonce(nonce, container) {
+    if (!nonce) {
+        return;
+    }
+    if (typeof pressaoData === 'object' && pressaoData) {
+        pressaoData.nonce = nonce;
+    }
+    if (container && container.dataset) {
+        container.dataset.nonce = nonce;
+    }
+    document.querySelectorAll('.pressao-alvos').forEach(function(el) {
+        el.dataset.nonce = nonce;
+    });
+}
+
+/**
+ * Busca nonce fresco da sessão atual (não usa o nonce embutido na página).
+ * Mitiga page cache e perda do cookie de autenticação do WordPress.
+ */
+function refreshActionNonce(container) {
+    if (!pressaoData || !pressaoData.ajaxUrl) {
+        return Promise.resolve(getActionNonce(container));
+    }
+    const data = {
+        action: 'pressao_refresh_nonce'
+    };
+    return fetch(pressaoData.ajaxUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(data),
+        credentials: 'same-origin'
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(response) {
+        const nonce = response?.data?.nonce || response?.data?.data?.nonce;
+        if (response.success && nonce) {
+            setActionNonce(nonce, container);
+            return nonce;
+        }
+        return getActionNonce(container);
+    })
+    .catch(function() {
+        return getActionNonce(container);
+    });
+}
+
+function isNonceErrorMessage(message) {
+    if (!message) {
+        return false;
+    }
+    return String(message).toLowerCase().indexOf('nonce') !== -1;
+}
+
 // ============================================
 // PROGRESSO DO ATIVISTA
 // ============================================
@@ -271,7 +347,7 @@ function applyProgressoToElement(el, done, total) {
         bar.style.width = pct + '%';
     }
     if (text) {
-        text.textContent = done + ' / ' + total;
+        text.textContent = done + ' de ' + total;
     }
     if (track) {
         track.setAttribute('aria-valuenow', String(done));
@@ -468,6 +544,7 @@ function initAlvos(container) {
     snapshotAlvosActionsUI(container);
     checkActionsStatus(container);
     bindAlvoActionListeners(container);
+    bindTemplateToggleListeners(container);
 }
 
 function snapshotAlvosActionsUI(container) {
@@ -494,75 +571,32 @@ function bindAlvoActionListeners(container) {
     const confirmInterval = parseInt(container.dataset.confirmInterval) ||
                            parseInt(pressaoData?.confirmInterval) || 10;
 
-    container.querySelectorAll('.pressao-action-confirm').forEach(function(button) {
-        if (button.dataset.bound === 'true') {
+    container.querySelectorAll('.pressao-alvo-item').forEach(function(item) {
+        if (item.dataset.itemBound === 'true') {
             return;
         }
-        button.dataset.bound = 'true';
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const alvoId = this.dataset.alvoId;
-            const acaoId = this.dataset.acaoId;
-            const campaignId = this.dataset.campaign || container.dataset.campaign;
-            const canal = this.dataset.canal || this.closest('.pressao-alvo-item')?.dataset.canal || 'email';
-
-            console.log(`🖱️ .pressao-action-confirm clicado para alvo: ${alvoId}, canal: ${canal}`);
-
-            confirmarAcao(alvoId, acaoId, campaignId, container, this);
-        });
-    });
-
-    const toggles = container.querySelectorAll('.pressao-action-toggle');
-    console.log(`🔘 Encontrados ${toggles.length} botões .pressao-action-toggle`);
-
-    toggles.forEach(function(toggle) {
-        if (toggle.dataset.bound === 'true') {
-            return;
-        }
-        toggle.dataset.bound = 'true';
-        toggle.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const alvoId = this.dataset.alvoId;
-            const campaignId = this.dataset.campaign || container.dataset.campaign;
-            const canal = this.dataset.canal || 'email';
-
-            const ativista = getAtivistaData();
-
-            if (!canalRequerAtivista(canal)) {
-                realizarAcao(alvoId, campaignId, container, this, null, canal);
+        item.dataset.itemBound = 'true';
+        item.addEventListener('click', function(e) {
+            if (item.classList.contains('action-done')) {
+                return;
+            }
+            if (e.target.closest('.pressao-ativista-form') ||
+                e.target.closest('.pressao-action-submit') ||
+                e.target.closest('.pressao-action-confirm')) {
                 return;
             }
 
-            if (!ativista) {
-                const form = this.closest('.pressao-alvo-actions').querySelector('.pressao-ativista-form');
-                if (form) {
-                    form.style.display = 'block';
-                    form.dataset.canal = canal;
-                }
-            } else if (precisaConfirmarAtivista(confirmInterval)) {
-                const toggleRef = this;
-                mostrarConfirmacaoAtivista(container, ativista, function() {
-                    const submit = toggleRef.closest('.pressao-alvo-actions').querySelector('.pressao-action-submit');
-                    if (submit) {
-                        submit.click();
-                    }
-                }, toggleRef);
-            } else {
-                const submit = this.closest('.pressao-alvo-actions').querySelector('.pressao-action-submit');
-                if (submit) {
-                    submit.click();
-                } else {
-                    realizarAcao(alvoId, campaignId, container, this, ativista, canal);
-                }
+            const button = item.querySelector('.pressao-action-button, .pressao-action-toggle');
+            if (!button) {
+                return;
             }
+
+            e.preventDefault();
+            handleAlvoItemActivate(container, item, button, confirmInterval);
         });
     });
 
     const submits = container.querySelectorAll('.pressao-action-submit');
-    console.log(`🔘 Encontrados ${submits.length} botões .pressao-action-submit`);
-
     submits.forEach(function(submit) {
         if (submit.dataset.bound === 'true') {
             return;
@@ -570,30 +604,23 @@ function bindAlvoActionListeners(container) {
         submit.dataset.bound = 'true';
         submit.addEventListener('click', function(e) {
             e.preventDefault();
-
-            console.log('🖱️ ===== .pressao-action-submit CLICADO! =====');
+            e.stopPropagation();
 
             const alvoId = this.dataset.alvoId;
             const campaignId = this.dataset.campaign || container.dataset.campaign;
             const canal = this.dataset.canal ||
-            this.closest('.pressao-ativista-form')?.dataset.canal ||
-            this.closest('.pressao-alvo-item')?.dataset.canal ||
-            'email';
+                this.closest('.pressao-ativista-form')?.dataset.canal ||
+                this.closest('.pressao-alvo-item')?.dataset.canal ||
+                'email';
             const form = this.closest('.pressao-ativista-form');
-
-            console.log('🎯 Alvo ID:', alvoId);
-            console.log('📢 Campaign ID:', campaignId);
-
             const ativistaExistente = getAtivistaData();
 
             if (ativistaExistente && !precisaConfirmarAtivista(10)) {
-                console.log('✅ Ativista já existe, executando ação diretamente');
                 realizarAcao(alvoId, campaignId, container, this, ativistaExistente, canal);
                 return;
             }
 
             if (!form) {
-                console.error('❌ Formulário não encontrado!');
                 return;
             }
 
@@ -601,13 +628,7 @@ function bindAlvoActionListeners(container) {
             const email = form.querySelector('.pressao-ativista-email');
             const telefone = form.querySelector('.pressao-ativista-telefone');
 
-            console.log('📝 Campos encontrados:');
-            console.log('  Nome:', nome ? '✅' : '❌', nome ? nome.value : 'não encontrado');
-            console.log('  Email:', email ? '✅' : '❌', email ? email.value : 'não encontrado');
-            console.log('  Telefone:', telefone ? '✅' : '❌', telefone ? telefone.value : 'não encontrado');
-
             if (!nome || !nome.value.trim()) {
-                console.log('⚠️ Nome vazio');
                 showNotification(container, 'error', 'Por favor, informe seu nome.');
                 return;
             }
@@ -618,25 +639,413 @@ function bindAlvoActionListeners(container) {
                 telefone: telefone ? telefone.value.trim() : ''
             };
 
-            console.log('📦 Ativista preparado:', ativista);
-            console.log('💾 Chamando saveAtivistaData...');
-
-            const saved = saveAtivistaData(ativista);
-            console.log('✅ Resultado do save:', saved);
-
-            const verificar = getCookie(ATIVISTA_COOKIE);
-
-            if (!verificar) {
+            if (!saveAtivistaData(ativista) || !getCookie(ATIVISTA_COOKIE)) {
                 showNotification(container, 'error', 'Erro ao salvar seus dados. Tente novamente.');
                 return;
             }
 
-            if (form) {
-                form.style.display = 'none';
-                console.log('🗑️ Formulário inline fechado');
+            form.style.display = 'none';
+            realizarAcao(alvoId, campaignId, container, this, ativista, canal);
+        });
+    });
+}
+
+function handleAlvoItemActivate(container, item, button, confirmInterval) {
+    const alvoId = button.dataset.alvoId || item.dataset.alvoId;
+    const campaignId = button.dataset.campaign || container.dataset.campaign;
+    const canal = button.dataset.canal || item.dataset.canal || 'email';
+
+    if (canalUsaOverlay(canal)) {
+        abrirOverlayAcao(container, item, canal);
+        return;
+    }
+
+    if (button.classList.contains('pressao-action-button')) {
+        realizarAcao(alvoId, campaignId, container, button, getAtivistaData(), canal);
+        return;
+    }
+
+    // .pressao-action-toggle (whatsapp/telefone com formulário inline)
+    const ativista = getAtivistaData();
+
+    if (!canalRequerAtivista(canal)) {
+        realizarAcao(alvoId, campaignId, container, button, null, canal);
+        return;
+    }
+
+    if (!ativista) {
+        const form = item.querySelector('.pressao-ativista-form');
+        if (form) {
+            form.style.display = 'block';
+            form.dataset.canal = canal;
+        }
+    } else if (precisaConfirmarAtivista(confirmInterval)) {
+        mostrarConfirmacaoAtivista(container, ativista, function() {
+            const submit = item.querySelector('.pressao-action-submit');
+            if (submit) {
+                submit.click();
+            }
+        }, button);
+    } else {
+        const submit = item.querySelector('.pressao-action-submit');
+        if (submit) {
+            submit.click();
+        } else {
+            realizarAcao(alvoId, campaignId, container, button, ativista, canal);
+        }
+    }
+}
+
+function bindTemplateToggleListeners(container) {
+    container.querySelectorAll('.pressao-template-toggle').forEach(function(button) {
+        if (button.dataset.bound === 'true') {
+            return;
+        }
+        button.dataset.bound = 'true';
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const wrapper = this.closest('.pressao-alvo-template, .pressao-email-template');
+            const body = wrapper?.querySelector('.pressao-alvo-template-corpo');
+            if (!wrapper || !body) {
+                return;
             }
 
-            realizarAcao(alvoId, campaignId, container, this, ativista, canal);
+            const isOpen = wrapper.dataset.templateOpen === 'true';
+            wrapper.dataset.templateOpen = isOpen ? 'false' : 'true';
+            body.hidden = isOpen;
+            this.textContent = isOpen ? 'Ver mensagem' : 'Ocultar mensagem';
+        });
+    });
+}
+
+// ============================================
+// OVERLAY DE AÇÃO (modal desktop / drawer mobile)
+// ============================================
+
+let pressaoOverlayState = null;
+
+function getOrCreateActionOverlay() {
+    let overlay = document.getElementById('pressao-action-overlay');
+    if (overlay) {
+        return overlay;
+    }
+
+    overlay = document.createElement('div');
+    overlay.id = 'pressao-action-overlay';
+    overlay.className = 'pressao-action-overlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+        <div class="pressao-action-overlay-backdrop" data-pressao-overlay-close="1"></div>
+        <div class="pressao-action-panel" role="dialog" aria-modal="true">
+            <div class="pressao-action-panel-header">
+                <button type="button" class="pressao-action-back" aria-label="Voltar">←</button>
+                <div class="pressao-action-panel-channel"></div>
+            </div>
+            <div class="pressao-action-panel-body"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('.pressao-action-back').addEventListener('click', function() {
+        fecharOverlayAcao();
+    });
+    overlay.querySelector('[data-pressao-overlay-close]').addEventListener('click', function() {
+        if (window.matchMedia('(min-width: 768px)').matches) {
+            fecharOverlayAcao();
+        }
+    });
+
+    return overlay;
+}
+
+function fecharOverlayAcao() {
+    const overlay = document.getElementById('pressao-action-overlay');
+    if (overlay) {
+        overlay.hidden = true;
+        overlay.querySelector('.pressao-action-panel-body').innerHTML = '';
+    }
+    pressaoOverlayState = null;
+    document.body.style.overflow = '';
+}
+
+function abrirOverlayAcao(container, item, canal) {
+    if (!item) {
+        return;
+    }
+    if (canal === 'email') {
+        abrirOverlayEmail(container, item);
+        return;
+    }
+    if (canal === 'instagram' || canal === 'tiktok') {
+        abrirOverlaySocial(container, item, canal);
+    }
+}
+
+function renderOverlayShell(canal) {
+    const overlay = getOrCreateActionOverlay();
+    const channelEl = overlay.querySelector('.pressao-action-panel-channel');
+    channelEl.innerHTML = `
+        <span class="pressao-alvo-canal-badge" data-canal="${escapeAttribute(canal)}"></span>
+        <span>${escapeHtml(canalDisplayName(canal))}</span>
+    `;
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    return overlay;
+}
+
+function abrirOverlaySocial(container, item, canal) {
+    const overlay = renderOverlayShell(canal);
+    const body = overlay.querySelector('.pressao-action-panel-body');
+    const alvoId = item.dataset.alvoId;
+    const campaignId = container.dataset.campaign;
+    const alvoNome = item.dataset.alvoNome || '';
+    const canalLabel = canalDisplayName(canal);
+    const templateTexto = item.dataset.templateConteudo || '';
+    const pendingAcaoId = item.dataset.acaoId || '';
+    const pendingUrl = item.dataset.perfilUrl || item.dataset.contato || '';
+
+    body.innerHTML = `
+        <h2 class="pressao-action-panel-title">Comente e fortaleça a ${escapeHtml(alvoNome)}</h2>
+        <p class="pressao-action-panel-subtitle">Quanto mais gente comenta e barulho fazemos, mais visibilidade a pauta ganha.</p>
+        <label class="pressao-action-field-label" for="pressao-social-message">Mensagem</label>
+        <textarea id="pressao-social-message" class="pressao-action-message-textarea" readonly></textarea>
+        <button type="button" class="pressao-copy-open-btn" disabled>
+            Copiar e abrir no ${escapeHtml(canalLabel)}
+        </button>
+        <div class="pressao-confirm-section">
+            <p class="pressao-confirm-section-title">Já comentou?</p>
+            <p class="pressao-confirm-section-text">Depois de publicar, volte aqui para seguir para a próxima ação.</p>
+            <button type="button" class="pressao-confirm-continue" disabled>Já comentei, continuar!</button>
+        </div>
+        <p class="pressao-overlay-error" hidden></p>
+    `;
+
+    const textarea = body.querySelector('.pressao-action-message-textarea');
+    const copyBtn = body.querySelector('.pressao-copy-open-btn');
+    const confirmBtn = body.querySelector('.pressao-confirm-continue');
+    const errorEl = body.querySelector('.pressao-overlay-error');
+
+    textarea.value = templateTexto;
+
+    pressaoOverlayState = {
+        tipo: 'social',
+        container: container,
+        item: item,
+        alvoId: alvoId,
+        campaignId: campaignId,
+        canal: canal,
+        acaoId: pendingAcaoId || null,
+        perfilUrl: pendingUrl || '',
+        texto: templateTexto
+    };
+
+    copyBtn.addEventListener('click', function() {
+        const texto = pressaoOverlayState?.texto || textarea.value || '';
+        const url = pressaoOverlayState?.perfilUrl || item.dataset.contato || '';
+        if (!texto) {
+            return;
+        }
+        navigator.clipboard.writeText(texto)
+            .then(function() {
+                if (url) {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                }
+                const original = copyBtn.textContent;
+                copyBtn.textContent = 'Mensagem copiada';
+                setTimeout(function() {
+                    copyBtn.textContent = original;
+                }, 2000);
+            })
+            .catch(function() {
+                errorEl.hidden = false;
+                errorEl.textContent = 'Não foi possível copiar a mensagem.';
+            });
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (!pressaoOverlayState?.acaoId) {
+            errorEl.hidden = false;
+            errorEl.textContent = 'Aguarde o carregamento da ação.';
+            return;
+        }
+        confirmBtn.disabled = true;
+        confirmarAcao(
+            pressaoOverlayState.alvoId,
+            pressaoOverlayState.acaoId,
+            pressaoOverlayState.campaignId,
+            pressaoOverlayState.container,
+            confirmBtn,
+            { fromOverlay: true }
+        );
+    });
+
+    if (pendingAcaoId) {
+        copyBtn.disabled = !templateTexto;
+        confirmBtn.disabled = false;
+        return;
+    }
+
+    // Copia/abre já usa contato (URL da postagem) sem esperar a API
+    if (templateTexto && (pendingUrl || item.dataset.contato)) {
+        copyBtn.disabled = false;
+    }
+
+    iniciarAcaoSocialNoOverlay(container, item, canal, {
+        textarea: textarea,
+        copyBtn: copyBtn,
+        confirmBtn: confirmBtn,
+        errorEl: errorEl
+    });
+}
+
+function iniciarAcaoSocialNoOverlay(container, item, canal, refs) {
+    const alvoId = item.dataset.alvoId;
+    const campaignId = container.dataset.campaign;
+
+    realizarAcao(alvoId, campaignId, container, null, null, canal, {
+        silent: true,
+        onSuccess: function(response) {
+            const apiData = response.data?.data || {};
+            const acaoId = response.data?.acao_id || apiData.acao_id || null;
+            const status = response.data?.status || apiData.status_atual || 'CONCLUIDA';
+            const proximoPasso = apiData.proximo_passo || {};
+            const dados = proximoPasso.dados || {};
+            const texto = dados.texto || item.dataset.templateConteudo || '';
+            const url = item.dataset.contato || dados.url_postagem || dados.url_perfil || dados.link || '';
+
+            item.dataset.acaoId = acaoId || '';
+            item.dataset.perfilUrl = url;
+
+            if (pressaoOverlayState && pressaoOverlayState.alvoId === alvoId) {
+                pressaoOverlayState.acaoId = acaoId;
+                pressaoOverlayState.perfilUrl = url;
+                pressaoOverlayState.texto = texto;
+            }
+
+            if (refs.textarea && texto) {
+                refs.textarea.value = texto;
+            }
+            if (refs.copyBtn) {
+                refs.copyBtn.disabled = !texto;
+            }
+            if (refs.confirmBtn) {
+                refs.confirmBtn.disabled = !acaoId || status !== 'AGUARDANDO_ACAO_HUMANA';
+            }
+
+            if (status !== 'AGUARDANDO_ACAO_HUMANA' && acaoId) {
+                // Já concluída (caso raro em canal social)
+                const acoes = getAcoesFromStorage();
+                marcarAcaoRealizada(item, acoes[alvoId]);
+                fecharOverlayAcao();
+            }
+        },
+        onError: function(message) {
+            if (refs.errorEl) {
+                refs.errorEl.hidden = false;
+                refs.errorEl.textContent = message || 'Erro ao iniciar a ação.';
+            }
+        }
+    });
+}
+
+function abrirOverlayEmail(container, item) {
+    const overlay = renderOverlayShell('email');
+    const body = overlay.querySelector('.pressao-action-panel-body');
+    const alvoId = item.dataset.alvoId;
+    const campaignId = container.dataset.campaign;
+    const templateTitulo = item.dataset.templateTitulo || '';
+    const templateConteudo = item.dataset.templateConteudo || '';
+    const ativista = getAtivistaData() || {};
+
+    const templateBlock = (templateTitulo || templateConteudo)
+        ? `
+            <div class="pressao-email-template pressao-alvo-template" data-template-open="false">
+                <button type="button" class="pressao-template-toggle">Ver mensagem</button>
+                <div class="pressao-alvo-template-corpo" hidden>
+                    ${templateTitulo ? `<strong>${escapeHtml(templateTitulo)}</strong><br>` : ''}
+                    ${escapeHtml(templateConteudo)}
+                </div>
+            </div>
+        `
+        : '';
+
+    body.innerHTML = `
+        <h2 class="pressao-action-panel-title">Envie diretamente para os alvos</h2>
+        <p class="pressao-action-panel-subtitle">Preencha as informações para confirmar o envio.</p>
+        ${templateBlock}
+        <form class="pressao-overlay-form">
+            <div class="pressao-form-group">
+                <label for="pressao-overlay-nome">Nome *</label>
+                <input type="text" id="pressao-overlay-nome" class="pressao-ativista-nome" required
+                       value="${escapeAttribute(ativista.nome || '')}" placeholder="Seu nome" />
+            </div>
+            <div class="pressao-form-group">
+                <label for="pressao-overlay-email">Email *</label>
+                <input type="email" id="pressao-overlay-email" class="pressao-ativista-email" required
+                       value="${escapeAttribute(ativista.email || '')}" placeholder="Seu email" />
+            </div>
+            <p class="pressao-overlay-error" hidden></p>
+            <button type="submit" class="pressao-overlay-submit">Confirmar</button>
+        </form>
+    `;
+
+    bindTemplateToggleListeners(body);
+
+    const form = body.querySelector('.pressao-overlay-form');
+    const errorEl = body.querySelector('.pressao-overlay-error');
+    const submitBtn = body.querySelector('.pressao-overlay-submit');
+
+    pressaoOverlayState = {
+        tipo: 'email',
+        container: container,
+        item: item,
+        alvoId: alvoId,
+        campaignId: campaignId,
+        canal: 'email'
+    };
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const nome = form.querySelector('.pressao-ativista-nome');
+        const email = form.querySelector('.pressao-ativista-email');
+
+        if (!nome.value.trim()) {
+            errorEl.hidden = false;
+            errorEl.textContent = 'Por favor, informe seu nome.';
+            return;
+        }
+        if (!email.value.trim()) {
+            errorEl.hidden = false;
+            errorEl.textContent = 'Por favor, informe seu email.';
+            return;
+        }
+
+        const ativistaData = {
+            nome: nome.value.trim(),
+            email: email.value.trim(),
+            telefone: (getAtivistaData() || {}).telefone || ''
+        };
+        saveAtivistaData(ativistaData);
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+        errorEl.hidden = true;
+
+        realizarAcao(alvoId, campaignId, container, submitBtn, ativistaData, 'email', {
+            silent: true,
+            onSuccess: function() {
+                const acoes = getAcoesFromStorage();
+                marcarAcaoRealizada(item, acoes[alvoId]);
+                fecharOverlayAcao();
+                showNotification(container, 'success', 'Ação realizada!');
+            },
+            onError: function(message) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar';
+                errorEl.hidden = false;
+                errorEl.textContent = message || 'Erro ao realizar ação.';
+            }
         });
     });
 }
@@ -646,22 +1055,20 @@ function bindAlvoActionListeners(container) {
 // ============================================
 
 function mostrarConfirmacaoAtivista(container, ativista, callback, contextElement) {
-    console.log('🔄 Mostrando confirmação para:', ativista.nome);
-    
-    const message = container.dataset.confirmMessage || 
-                   pressaoData?.ativistaConfirmMessage || 
+    const message = container.dataset.confirmMessage ||
+                   pressaoData?.ativistaConfirmMessage ||
                    'Confirmar identidade';
-    const yesText = container.dataset.confirmYes || 
-                   pressaoData?.ativistaConfirmYes || 
+    const yesText = container.dataset.confirmYes ||
+                   pressaoData?.ativistaConfirmYes ||
                    'Sou eu';
-    const noText = container.dataset.confirmNo || 
-                  pressaoData?.ativistaConfirmNo || 
+    const noText = container.dataset.confirmNo ||
+                  pressaoData?.ativistaConfirmNo ||
                   'Não sou eu';
-    
+
     const overlay = document.createElement('div');
     overlay.className = 'pressao-modal-overlay pressao-modal-confirm';
     overlay.id = 'pressao-modal-confirm';
-    
+
     overlay.innerHTML = `
         <div class="pressao-modal pressao-modal-small">
             <div class="pressao-modal-header">
@@ -682,17 +1089,16 @@ function mostrarConfirmacaoAtivista(container, ativista, callback, contextElemen
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(overlay);
-    
+
     overlay.addEventListener('click', function(e) {
         if (e.target === this) {
             overlay.remove();
         }
     });
-    
+
     overlay.querySelector('#pressao-confirm-no').addEventListener('click', function() {
-        console.log('👤 "Não sou eu" clicado');
         const alvoId = contextElement?.dataset.alvoId ||
                        contextElement?.closest('.pressao-alvo-item')?.dataset.alvoId;
         clearPressaoUserData();
@@ -706,9 +1112,8 @@ function mostrarConfirmacaoAtivista(container, ativista, callback, contextElemen
             }
         }
     });
-    
+
     overlay.querySelector('#pressao-confirm-yes').addEventListener('click', function() {
-        console.log('✅ "Sou eu" clicado');
         setCookie(ATIVISTA_CONFIRM_COOKIE, String(Date.now()), getSessionDuration());
         overlay.remove();
         if (callback && typeof callback === 'function') {
@@ -721,155 +1126,236 @@ function mostrarConfirmacaoAtivista(container, ativista, callback, contextElemen
 // AÇÃO PRINCIPAL
 // ============================================
 
-function realizarAcao(alvoId, campaignId, container, button, ativista, canal) {
-    console.log('🚀 realizarAcao:', { alvoId, campaignId, canal });
-    
+function realizarAcao(alvoId, campaignId, container, button, ativista, canal, options) {
+    options = options || {};
+
     if (!ativista) {
         ativista = getAtivistaData();
     }
 
-    // Se não tem canal, tenta buscar do item
     if (!canal) {
-        const item = button.closest('.pressao-alvo-item');
+        const item = button?.closest?.('.pressao-alvo-item');
         canal = item?.dataset?.canal || 'email';
     }
-    
-    console.log('📡 Canal sendo usado:', canal);
-    
-    const nonce = getActionNonce(container);
-    const originalText = button.textContent;
-    // Template sorteado pela API para este alvo; o do container é fallback
-    const alvoItem = button.closest('.pressao-alvo-item');
+
+    const originalText = button ? button.textContent : '';
+    const alvoItem = button?.closest?.('.pressao-alvo-item') ||
+        container.querySelector(`.pressao-alvo-item[data-alvo-id="${alvoId}"]`);
     const templateId = alvoItem?.dataset?.templateId || container.dataset.templateId || '';
-    
-    button.disabled = true;
-    button.textContent = 'Processando...';
-    
-    const data = {
-        action: 'pressao_realizar_acao',
-        alvo_id: alvoId,
-        campanha_id: campaignId,
-        canal: canal,
-        template_id: templateId,
-        nonce: nonce,
-        sessao_id: getOrCreateSessaoId(),
-        ativista_nome: ativista?.nome || '',
-        ativista_email: ativista?.email || '',
-        ativista_telefone: ativista?.telefone || ''
-    };
-    
-    fetch(pressaoData.ajaxUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(data)
-    })
-    .then(function(response) {
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            return response.text().then(function(text) {
-                throw new Error('Resposta inválida do servidor (esperado JSON).');
-            });
-        }
-        return response.json();
-    })
-    .then(function(response) {
-        console.log('response', response);
-        if (response.success) {
-            const acoes = getAcoesFromStorage();
-            const apiData = response.data?.data || {};
-            const acaoData = {
-                timestamp: response.data?.timestamp || Math.floor(Date.now() / 1000),
-                user_id: response.data?.user_id || null,
-                ativista: ativista || null,
-                acao_id: response.data?.acao_id || apiData.acao_id || null,
-                status: response.data?.status || apiData.status_atual || 'CONCLUIDA',
-            };
-            acoes[alvoId] = acaoData;
-            saveActionsToStorage(acoes);
-            updateProgressoByCampaign(campaignId);
-            
-            if (acaoData.status === 'AGUARDANDO_ACAO_HUMANA') {
-                console.log('🔄 Ação aguardando confirmação manual');
-                
-                const actionsDiv = button.closest('.pressao-alvo-actions');
-                mostrarBotaoConfirmacao(actionsDiv, alvoId, acaoData.acao_id, campaignId, container);
-                showNotification(container, 'info', 'Ação iniciada! Confirme quando concluir.');
-                
-            } else {
-                console.log('✅ Ação concluída automaticamente');
-                
-                const item = button.closest('.pressao-alvo-item');
-                marcarAcaoRealizada(item, acoes[alvoId]);
-                showNotification(container, 'success', response.data?.message || 'Ação realizada!');
-                incrementActionCounterByCampaign(campaignId, null);
-                
-                const form = button.closest('.pressao-alvo-actions')?.querySelector('.pressao-ativista-form');
-                if (form) {
-                    form.style.display = 'none';
-                }
+
+    if (button && !options.silent) {
+        button.disabled = true;
+        button.textContent = 'Processando...';
+    }
+
+    function buildPayload(nonce) {
+        return {
+            action: 'pressao_realizar_acao',
+            alvo_id: alvoId,
+            campanha_id: campaignId,
+            canal: canal,
+            template_id: templateId,
+            nonce: nonce,
+            sessao_id: getOrCreateSessaoId(),
+            ativista_nome: ativista?.nome || '',
+            ativista_email: ativista?.email || '',
+            ativista_telefone: ativista?.telefone || ''
+        };
+    }
+
+    function postAcao(nonce) {
+        return fetch(pressaoData.ajaxUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            credentials: 'same-origin',
+            body: new URLSearchParams(buildPayload(nonce))
+        })
+        .then(function(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return response.text().then(function() {
+                    throw new Error('Resposta inválida do servidor (esperado JSON).');
+                });
             }
-            
-        } else {
+            return response.json();
+        });
+    }
+
+    function fail(message) {
+        if (button && !options.silent) {
             button.disabled = false;
             button.textContent = originalText;
-            showNotification(container, 'error', response.data?.message || 'Erro ao realizar ação');
         }
-    })
-    .catch(function(error) {
-        console.error('Erro:', error);
-        button.disabled = false;
-        button.textContent = originalText;
-        showNotification(container, 'error', 'Erro ao realizar ação. Tente novamente.');
-    });
+        if (typeof options.onError === 'function') {
+            options.onError(message);
+        } else {
+            showNotification(container, 'error', message);
+        }
+    }
+
+    function handleSuccess(response) {
+        const acoes = getAcoesFromStorage();
+        const apiData = response.data?.data || {};
+        const acaoData = {
+            timestamp: response.data?.timestamp || Math.floor(Date.now() / 1000),
+            user_id: response.data?.user_id || null,
+            acao_id: response.data?.acao_id || apiData.acao_id || null,
+            status: response.data?.status || apiData.status_atual || 'CONCLUIDA',
+        };
+        acoes[alvoId] = acaoData;
+        saveActionsToStorage(acoes);
+        updateProgressoByCampaign(campaignId);
+
+        if (typeof options.onSuccess === 'function') {
+            options.onSuccess(response);
+            return;
+        }
+
+        if (acaoData.status === 'AGUARDANDO_ACAO_HUMANA') {
+            const item = alvoItem;
+            if (item) {
+                item.dataset.acaoId = acaoData.acao_id || '';
+                const dados = (apiData.proximo_passo || {}).dados || {};
+                const urlPostagem = item.dataset.contato ||
+                    dados.url_postagem || dados.url_perfil || dados.link || '';
+                if (urlPostagem) {
+                    item.dataset.perfilUrl = urlPostagem;
+                }
+                if (dados.texto) {
+                    item.dataset.templateConteudo = dados.texto;
+                }
+            }
+            if (button && !options.silent) {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        } else {
+            const item = alvoItem;
+            if (item) {
+                marcarAcaoRealizada(item, acoes[alvoId]);
+            }
+            showNotification(container, 'success', response.data?.message || 'Ação realizada!');
+            incrementActionCounterByCampaign(campaignId, null);
+
+            const form = button?.closest?.('.pressao-alvo-actions')?.querySelector('.pressao-ativista-form');
+            if (form) {
+                form.style.display = 'none';
+            }
+        }
+    }
+
+    // Renova nonce antes do POST — Instagram/TikTok disparam no open do modal
+    // e falham se a página veio de cache ou a sessão WP mudou.
+    refreshActionNonce(container)
+        .then(function(nonce) {
+            return postAcao(nonce).then(function(response) {
+                if (response.success) {
+                    return response;
+                }
+                const message = response.data?.message || 'Erro ao realizar ação';
+                if (!options._nonceRetried && isNonceErrorMessage(message)) {
+                    options._nonceRetried = true;
+                    return refreshActionNonce(container).then(function(freshNonce) {
+                        return postAcao(freshNonce);
+                    });
+                }
+                return response;
+            });
+        })
+        .then(function(response) {
+            if (response.success) {
+                handleSuccess(response);
+                return;
+            }
+            fail(response.data?.message || 'Erro ao realizar ação');
+        })
+        .catch(function(error) {
+            console.error('Erro:', error);
+            fail('Erro ao realizar ação. Tente novamente.');
+        });
 }
 
 // ============================================
 // CONFIRMAÇÃO DE AÇÃO MANUAL
 // ============================================
 
-function confirmarAcao(alvoId, acaoId, campaignId, container, button) {
-    console.log('✅ confirmarAcao:', { alvoId, acaoId, campaignId });
+function confirmarAcao(alvoId, acaoId, campaignId, container, button, options) {
+    options = options || {};
 
     if (!acaoId) {
         showNotification(container, 'error', 'ID da ação não encontrado. Tente agir novamente.');
         return;
     }
 
-    const nonce = getActionNonce(container);
-    const originalText = button.textContent;
+    const originalText = button ? button.textContent : '';
 
-    button.disabled = true;
-    button.textContent = 'Confirmando...';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Confirmando...';
+    }
 
-    const data = {
-        action: 'pressao_confirmar_acao',
-        acao_id: acaoId,
-        alvo_id: alvoId,
-        campanha_id: campaignId || '',
-        nonce: nonce
-    };
+    function buildPayload(nonce) {
+        return {
+            action: 'pressao_confirmar_acao',
+            acao_id: acaoId,
+            alvo_id: alvoId,
+            campanha_id: campaignId || '',
+            nonce: nonce
+        };
+    }
 
-    fetch(pressaoData.ajaxUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(data)
-    })
-    .then(function(response) {
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            return response.text().then(function() {
-                throw new Error('Resposta inválida do servidor (esperado JSON).');
-            });
+    function postConfirm(nonce) {
+        return fetch(pressaoData.ajaxUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            credentials: 'same-origin',
+            body: new URLSearchParams(buildPayload(nonce))
+        })
+        .then(function(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return response.text().then(function() {
+                    throw new Error('Resposta inválida do servidor (esperado JSON).');
+                });
+            }
+            return response.json();
+        });
+    }
+
+    function fail(message) {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalText;
         }
-        return response.json();
-    })
-    .then(function(response) {
-        console.log('confirmarAcao response', response);
-        if (response.success) {
+        showNotification(container, 'error', message);
+    }
+
+    refreshActionNonce(container)
+        .then(function(nonce) {
+            return postConfirm(nonce).then(function(response) {
+                if (response.success) {
+                    return response;
+                }
+                const message = response.data?.message || 'Erro ao confirmar ação';
+                if (!options._nonceRetried && isNonceErrorMessage(message)) {
+                    options._nonceRetried = true;
+                    return refreshActionNonce(container).then(function(freshNonce) {
+                        return postConfirm(freshNonce);
+                    });
+                }
+                return response;
+            });
+        })
+        .then(function(response) {
+            if (!response.success) {
+                fail(response.data?.message || 'Erro ao confirmar ação');
+                return;
+            }
+
             const acoes = getAcoesFromStorage();
             acoes[alvoId] = {
                 ...(acoes[alvoId] || {}),
@@ -880,8 +1366,20 @@ function confirmarAcao(alvoId, acaoId, campaignId, container, button) {
             saveActionsToStorage(acoes);
             updateProgressoByCampaign(campaignId || container.dataset.campaign);
 
-            const item = button.closest('.pressao-alvo-item');
-            marcarAcaoRealizada(item, acoes[alvoId]);
+            const item = options.fromOverlay
+                ? pressaoOverlayState?.item || container.querySelector(`.pressao-alvo-item[data-alvo-id="${alvoId}"]`)
+                : button?.closest?.('.pressao-alvo-item') ||
+                  container.querySelector(`.pressao-alvo-item[data-alvo-id="${alvoId}"]`);
+
+            if (item) {
+                delete item.dataset.acaoId;
+                marcarAcaoRealizada(item, acoes[alvoId]);
+            }
+
+            if (options.fromOverlay) {
+                fecharOverlayAcao();
+            }
+
             showNotification(container, 'success', response.data?.message || 'Ação confirmada!');
 
             const campanhaAtual = campaignId || container.dataset.campaign;
@@ -890,51 +1388,11 @@ function confirmarAcao(alvoId, acaoId, campaignId, container, button) {
             } else {
                 incrementActionCounterByCampaign(campanhaAtual, null);
             }
-        } else {
-            button.disabled = false;
-            button.textContent = originalText;
-            showNotification(container, 'error', response.data?.message || 'Erro ao confirmar ação');
-        }
-    })
-    .catch(function(error) {
-        console.error('Erro ao confirmar ação:', error);
-        button.disabled = false;
-        button.textContent = originalText;
-        showNotification(container, 'error', 'Erro ao confirmar ação. Tente novamente.');
-    });
-}
-
-function mostrarBotaoConfirmacao(actionsDiv, alvoId, acaoId, campaignId, container) {
-    if (!actionsDiv) {
-        return;
-    }
-
-    actionsDiv.innerHTML = `
-        <button type="button"
-                class="pressao-action-confirm"
-                data-alvo-id="${alvoId}"
-                data-acao-id="${acaoId || ''}"
-                data-campaign="${campaignId || ''}">
-            Confirmar ação ✓
-        </button>
-        <span class="pressao-action-pending" style="font-size:12px;color:#856404;display:block;">
-            Aguardando confirmação manual
-        </span>
-    `;
-
-    const confirmBtn = actionsDiv.querySelector('.pressao-action-confirm');
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            confirmarAcao(
-                this.dataset.alvoId,
-                this.dataset.acaoId,
-                this.dataset.campaign || container.dataset.campaign,
-                container,
-                this
-            );
+        })
+        .catch(function(error) {
+            console.error('Erro ao confirmar ação:', error);
+            fail('Erro ao confirmar ação. Tente novamente.');
         });
-    }
 }
 
 // ============================================
@@ -952,13 +1410,7 @@ function checkActionsStatus(container) {
         }
 
         if (acao.status === 'AGUARDANDO_ACAO_HUMANA' && acao.acao_id) {
-            mostrarBotaoConfirmacao(
-                item.querySelector('.pressao-alvo-actions'),
-                alvoId,
-                acao.acao_id,
-                container.dataset.campaign,
-                container
-            );
+            item.dataset.acaoId = acao.acao_id;
             return;
         }
 
@@ -979,6 +1431,7 @@ function marcarAcaoRealizada(item, actionData) {
         </span>
     `;
     item.classList.add('action-done');
+    item.classList.remove('action-pending');
 }
 
 function formatActionTime(timestamp) {
@@ -1015,4 +1468,8 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function escapeAttribute(text) {
+    return escapeHtml(text).replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
