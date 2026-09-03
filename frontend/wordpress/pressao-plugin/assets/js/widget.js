@@ -985,12 +985,21 @@ function abrirOverlayEmail(container, item) {
                 <input type="email" id="pressao-overlay-email" class="pressao-ativista-email" required
                        value="${escapeAttribute(ativista.email || '')}" placeholder="Seu email" />
             </div>
+            <div class="pressao-form-group">
+                <label for="pressao-overlay-whatsapp">WhatsApp</label>
+                <input type="tel" id="pressao-overlay-whatsapp" class="pressao-ativista-telefone"
+                       inputmode="numeric" autocomplete="tel"
+                       value="${escapeAttribute(formatPhoneMask(ativista.telefone || ''))}"
+                       placeholder="(11) 99999-9999" />
+            </div>
             <p class="pressao-overlay-error" hidden></p>
             <button type="submit" class="pressao-overlay-submit">Confirmar</button>
+            <p class="pressao-overlay-disclaimer">Seus dados são usados apenas para enviar este e-mail e não serão compartilhados.</p>
         </form>
     `;
 
     bindTemplateToggleListeners(body);
+    bindPhoneMask(body.querySelector('.pressao-ativista-telefone'));
 
     const form = body.querySelector('.pressao-overlay-form');
     const errorEl = body.querySelector('.pressao-overlay-error');
@@ -1009,6 +1018,7 @@ function abrirOverlayEmail(container, item) {
         e.preventDefault();
         const nome = form.querySelector('.pressao-ativista-nome');
         const email = form.querySelector('.pressao-ativista-email');
+        const telefone = form.querySelector('.pressao-ativista-telefone');
 
         if (!nome.value.trim()) {
             errorEl.hidden = false;
@@ -1024,7 +1034,7 @@ function abrirOverlayEmail(container, item) {
         const ativistaData = {
             nome: nome.value.trim(),
             email: email.value.trim(),
-            telefone: (getAtivistaData() || {}).telefone || ''
+            telefone: digitsOnly(telefone ? telefone.value : '')
         };
         saveAtivistaData(ativistaData);
 
@@ -1472,4 +1482,45 @@ function escapeHtml(text) {
 
 function escapeAttribute(text) {
     return escapeHtml(text).replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function digitsOnly(value) {
+    return String(value || '').replace(/\D/g, '');
+}
+
+/** Máscara BR: (11) 9999-9999 ou (11) 99999-9999 */
+function formatPhoneMask(value) {
+    const digits = digitsOnly(value).slice(0, 11);
+    if (!digits.length) {
+        return '';
+    }
+    if (digits.length <= 2) {
+        return '(' + digits;
+    }
+    if (digits.length <= 6) {
+        return '(' + digits.slice(0, 2) + ') ' + digits.slice(2);
+    }
+    if (digits.length <= 10) {
+        return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 6) + '-' + digits.slice(6);
+    }
+    return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 7) + '-' + digits.slice(7);
+}
+
+function bindPhoneMask(input) {
+    if (!input || input.dataset.maskBound === 'true') {
+        return;
+    }
+    input.dataset.maskBound = 'true';
+    input.addEventListener('input', function() {
+        const start = input.selectionStart;
+        const before = input.value.length;
+        input.value = formatPhoneMask(input.value);
+        const after = input.value.length;
+        if (typeof start === 'number') {
+            const next = Math.max(0, start + (after - before));
+            try {
+                input.setSelectionRange(next, next);
+            } catch (e) { /* ignore */ }
+        }
+    });
 }

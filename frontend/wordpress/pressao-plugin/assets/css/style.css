@@ -1,16 +1,20 @@
 /**
  * Pressão Plugin — Estilo fiel aos layouts do cliente
  *
- * Inventário visual (PDFs em layouts/):
- *   - Card branco centralizado, max-width 420px, border-radius 20px
- *   - Ações em linhas com borda cinza, ícone quadrado preto 36px, nome bold,
- *     subtítulo + tempo estimado cinza, seta/check circular à direita
- *   - Progresso no rodapé: fundo escuro, texto branco, barra verde
- *   - Tela social: header com seta/ícone, mensagem em textarea, botão preto
- *     full-width, seção de confirmação com check verde
- *   - Tela e-mail: chips de destinatários, toggle "Ver mensagem" laranja,
- *     formulário com labels + inputs arredondados, botão preto full-width
+ * Ícones via CSS mask-image (assets/icons/), tipografia Neue Haas Grotesk Text.
  */
+
+/* ============================================
+   TIPOGRAFIA
+   ============================================ */
+@font-face {
+    font-family: "Neue Haas Grotesk Text";
+    src: url("../fonts/NeueHaasGroteskText.woff2") format("woff2"),
+         url("../fonts/NeueHaasGroteskText.woff") format("woff");
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* ============================================
    TOKENS (custom properties)
@@ -31,8 +35,19 @@
     --pressao-border-light: #f3f4f6;
     --pressao-accent-green: #22c55e;
     --pressao-accent-orange: #f97316;
+    --pressao-accent-link: #0d6efd;
+    --pressao-ver-msg-bg: #eef2f6;
+    --pressao-icon-instagram-color: #b21e99;
+    --pressao-icon-email-color: #0068b2;
+    --pressao-icon-tiktok-color: #4d4d4d;
     --pressao-icon-size: 36px;
-    --pressao-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --pressao-font-family: "Neue Haas Grotesk Text", "Neue Haas Grotesk", Helvetica, Arial, sans-serif;
+    /* Fallbacks se inline style do PHP não carregar */
+    --pressao-icon-instagram: url("../icons/instagram.svg");
+    --pressao-icon-tiktok: url("../icons/tiktok.svg");
+    --pressao-icon-email: url("../icons/email.svg");
+    --pressao-icon-seta: url("../icons/seta.svg");
+    --pressao-icon-raio: url("../icons/raio-barra-progresso.svg");
 }
 
 /* ============================================
@@ -124,17 +139,53 @@
     text-transform: none;
     padding: 0;
     font-weight: 700;
+    position: relative;
 }
 
-/* Ícone textual dentro do badge */
+/* Ícone via mask (branco sobre badge preto na lista) */
 .pressao-alvo-canal-badge::before {
-    font-size: 1rem;
+    content: "";
+    display: block;
+    width: 16px;
+    height: 16px;
+    background-color: #fff;
+    mask-image: none;
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: none;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
 }
-.pressao-alvo-canal-badge[data-canal="instagram"]::before { content: "📷"; }
-.pressao-alvo-canal-badge[data-canal="tiktok"]::before { content: "🎵"; }
-.pressao-alvo-canal-badge[data-canal="email"]::before { content: "✉️"; }
-.pressao-alvo-canal-badge[data-canal="whatsapp"]::before { content: "💬"; }
-.pressao-alvo-canal-badge[data-canal="telefone"]::before { content: "📞"; }
+
+.pressao-alvo-canal-badge[data-canal="instagram"]::before {
+    mask-image: var(--pressao-icon-instagram);
+    -webkit-mask-image: var(--pressao-icon-instagram);
+}
+
+.pressao-alvo-canal-badge[data-canal="tiktok"]::before {
+    width: 13px;
+    height: 15px;
+    mask-image: var(--pressao-icon-tiktok);
+    -webkit-mask-image: var(--pressao-icon-tiktok);
+}
+
+.pressao-alvo-canal-badge[data-canal="email"]::before {
+    mask-image: var(--pressao-icon-email);
+    -webkit-mask-image: var(--pressao-icon-email);
+}
+
+.pressao-alvo-canal-badge[data-canal="whatsapp"]::before,
+.pressao-alvo-canal-badge[data-canal="telefone"]::before {
+    /* Fallback geométrico se não houver SVG dedicado */
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #fff;
+    mask-image: none;
+    -webkit-mask-image: none;
+}
 
 /* Detalhes (nome + subtítulo) */
 .pressao-alvo-detalhes {
@@ -188,22 +239,39 @@
     color: var(--pressao-text-primary);
     font-size: 0;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
     padding: 0;
+    position: relative;
 }
 
+/* Seta via mask — só ela muda de cor no hover */
 .pressao-action-button::after,
 .pressao-action-toggle::after {
-    content: "→";
-    font-size: 1rem;
-    color: inherit;
+    content: "";
+    display: block;
+    width: 18px;
+    height: 18px;
+    background-color: var(--pressao-text-primary);
+    mask-image: var(--pressao-icon-seta);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: var(--pressao-icon-seta);
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    transition: background-color 0.15s ease;
 }
 
 .pressao-action-button:hover,
 .pressao-action-toggle:hover {
     background: var(--pressao-bg-dark);
     border-color: var(--pressao-bg-dark);
-    color: #fff;
+}
+
+.pressao-action-button:hover::after,
+.pressao-action-toggle:hover::after {
+    background-color: #fff;
 }
 
 .pressao-action-button:disabled {
@@ -369,18 +437,20 @@
     justify-content: space-between;
     width: 100%;
     padding: 0.75rem 1rem;
-    border: 1px solid var(--pressao-border);
+    border: 1px solid transparent;
     border-radius: var(--pressao-radius-input);
-    background: var(--pressao-bg-card);
-    color: var(--pressao-accent-orange);
+    background: var(--pressao-ver-msg-bg);
+    color: var(--pressao-accent-link);
     font-size: 0.9375rem;
     font-weight: 600;
     cursor: pointer;
+    font-family: var(--pressao-font-family);
 }
 
 .pressao-template-toggle::after {
     content: "▾";
     font-size: 0.75rem;
+    color: var(--pressao-accent-link);
     transition: transform 0.2s ease;
 }
 
@@ -389,7 +459,7 @@
 }
 
 .pressao-template-toggle:hover {
-    background: var(--pressao-border-light);
+    background: #e4eaf0;
 }
 
 .pressao-alvo-template > summary {
@@ -486,6 +556,7 @@
     box-sizing: border-box;
     flex-direction: row;
     flex-wrap: wrap;
+    font-family: var(--pressao-font-family);
 }
 
 .pressao-progresso-label {
@@ -495,6 +566,32 @@
     text-transform: none;
     white-space: nowrap;
     flex-shrink: 0;
+    order: 0;
+}
+
+.pressao-progresso-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+    flex-shrink: 0;
+    order: 0;
+}
+
+.pressao-progresso-raio {
+    display: inline-block;
+    width: 11px;
+    height: 16px;
+    background-color: #ffc107;
+    mask-image: var(--pressao-icon-raio);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: var(--pressao-icon-raio);
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    flex-shrink: 0;
 }
 
 .pressao-progresso-text {
@@ -503,7 +600,7 @@
     font-variant-numeric: tabular-nums;
     color: #fff;
     white-space: nowrap;
-    margin-left: auto;
+    margin-left: 0;
     flex-shrink: 0;
 }
 
@@ -925,6 +1022,32 @@
     color: var(--pressao-text-primary);
 }
 
+/* No modal: badge transparente e ícone na cor da marca */
+.pressao-action-panel-channel .pressao-alvo-canal-badge {
+    background: transparent;
+    width: 24px;
+    height: 24px;
+    border-radius: 0;
+}
+
+.pressao-action-panel-channel .pressao-alvo-canal-badge[data-canal="instagram"]::before {
+    background-color: var(--pressao-icon-instagram-color);
+    width: 18px;
+    height: 18px;
+}
+
+.pressao-action-panel-channel .pressao-alvo-canal-badge[data-canal="email"]::before {
+    background-color: var(--pressao-icon-email-color);
+    width: 18px;
+    height: 18px;
+}
+
+.pressao-action-panel-channel .pressao-alvo-canal-badge[data-canal="tiktok"]::before {
+    background-color: var(--pressao-icon-tiktok-color);
+    width: 15px;
+    height: 17px;
+}
+
 .pressao-action-panel-title {
     margin: 0 0 0.5rem;
     font-size: 1.25rem;
@@ -1097,6 +1220,14 @@
 .pressao-overlay-submit:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.pressao-overlay-disclaimer {
+    margin: 0.75rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--pressao-text-secondary);
+    text-align: center;
 }
 
 .pressao-overlay-error {

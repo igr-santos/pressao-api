@@ -66,13 +66,17 @@ pressao-plugin/
 │   └── class-ajax.php          # AJAX handlers
 ├── assets/
 │   ├── css/
-│   │   └── style.css
+│   │   └── style.css           # Tokens, mask-image dos ícones, @font-face
+│   ├── fonts/                  # NeueHaasGroteskText.woff2/.woff (adicionar manualmente)
+│   ├── icons/                  # SVG de canais, seta e raio (via CSS mask-image)
 │   └── js/
 │       ├── admin.js            # Campo repetível de candidatos + Media Library
 │       └── widget.js           # UI, cookies, ações e confirmações
 └── views/
     └── widget-template.php
 ```
+
+Ícones usam `mask-image` (cor via CSS): lista com ícone branco; modal Instagram `#b21e99`, Email `#0068b2`, TikTok `#4d4d4d`. Seta: círculo CSS + mask; só a seta fica branca no hover.
 
 ### Ativando o plugin
 

@@ -224,3 +224,5 @@ __marimo__/
 tests/k6/.env.load-test
 tests/k6/results/
 !tests/k6/lib/
+
+.DS_Store

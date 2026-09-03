@@ -126,6 +126,13 @@ final class PressaoPlugin {
                 [],
                 PRESSAO_PLUGIN_VERSION
             );
+
+            $icons_url = PRESSAO_PLUGIN_URL . 'assets/icons/';
+            $icon_vars = sprintf(
+                ':root{--pressao-icon-instagram:url("%1$sinstagram.svg");--pressao-icon-tiktok:url("%1$stiktok.svg");--pressao-icon-email:url("%1$semail.svg");--pressao-icon-seta:url("%1$sseta.svg");--pressao-icon-raio:url("%1$sraio-barra-progresso.svg");}',
+                esc_url_raw($icons_url)
+            );
+            wp_add_inline_style('pressao-plugin', $icon_vars);
             
             wp_enqueue_script(
                 'pressao-plugin',
@@ -140,6 +147,7 @@ final class PressaoPlugin {
                 'campaignId' => get_option('pressao_campaign_id', ''),
                 'nonce' => wp_create_nonce('pressao_acao_nonce'),
                 'ajaxUrl' => admin_url('admin-ajax.php'),
+                'iconsUrl' => $icons_url,
                 'localStorageKey' => 'pressao_acoes_realizadas',
                 'cookieUserIdKey' => 'pressao_usuario_id',
                 'cookieActionsKey' => 'pressao_acoes_realizadas',

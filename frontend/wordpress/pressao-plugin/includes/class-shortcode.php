@@ -543,14 +543,17 @@ class PressaoPlugin_Shortcode {
              data-alvo-ids="<?php echo esc_attr($alvo_ids_attr); ?>"
              data-total="<?php echo esc_attr($total); ?>"
              data-done="<?php echo esc_attr($done); ?>">
+            <span class="pressao-progresso-label"><?php echo esc_html($atts['label']); ?></span>
+            <span class="pressao-progresso-count">
+                <span class="pressao-progresso-raio" aria-hidden="true"></span>
+                <span class="pressao-progresso-text"><?php echo esc_html($done . ' de ' . $total); ?></span>
+            </span>
             <div class="pressao-progresso-track" role="progressbar"
                  aria-valuemin="0"
                  aria-valuemax="<?php echo esc_attr($total); ?>"
                  aria-valuenow="<?php echo esc_attr($done); ?>">
                 <div class="pressao-progresso-bar" style="width: <?php echo esc_attr($pct); ?>%;"></div>
             </div>
-            <span class="pressao-progresso-text"><?php echo esc_html($done . ' de ' . $total); ?></span>
-            <span class="pressao-progresso-label"><?php echo esc_html($atts['label']); ?></span>
         </div>
         <?php
         return ob_get_clean();
