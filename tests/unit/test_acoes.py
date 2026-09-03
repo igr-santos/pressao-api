@@ -168,3 +168,62 @@ class TestOrquestrador:
         assert acao.status == StatusAcaoEnum.AGUARDANDO_ACAO_HUMANA
         assert acao.proximo_passo_tipo == ProximoPassoTipoEnum.EXIBIR_TEXTO_E_ABRIR_PERFIL
         assert "texto" in acao.proximo_passo_dados
+
+    @pytest.mark.asyncio
+    async def test_estrategia_instagram_usa_contato_como_url_postagem(self):
+        """Instagram: nome = perfil; contato = URL da postagem."""
+        from pressao_api.models.alvo import Alvo, TipoContato
+
+        alvo = Alvo(
+            id=uuid4(),
+            nome="Deputada Ana",
+            contato="https://www.instagram.com/p/AbCdEfGhIjK/",
+            tipo_contato=TipoContato.INSTAGRAM,
+            campanha_id=uuid4(),
+        )
+        acao = Acao(
+            id=uuid4(),
+            ativista_id="test",
+            campanha_id=alvo.campanha_id,
+            alvo_id=alvo.id,
+            canal=CanalEnum.INSTAGRAM,
+        )
+
+        orquestrador = OrquestradorCanais()
+        await orquestrador.executar(acao, alvo=alvo)
+
+        assert acao.proximo_passo_dados["perfil"] == "Deputada Ana"
+        assert (
+            acao.proximo_passo_dados["url_postagem"]
+            == "https://www.instagram.com/p/AbCdEfGhIjK/"
+        )
+        assert acao.proximo_passo_dados["url_perfil"] == acao.proximo_passo_dados["url_postagem"]
+
+    @pytest.mark.asyncio
+    async def test_estrategia_tiktok_usa_contato_como_url_postagem(self):
+        """TikTok: nome = perfil; contato = URL do vídeo."""
+        from pressao_api.models.alvo import Alvo, TipoContato
+
+        alvo = Alvo(
+            id=uuid4(),
+            nome="Perfil Pressão",
+            contato="https://www.tiktok.com/@perfil/video/1234567890",
+            tipo_contato=TipoContato.TIKTOK,
+            campanha_id=uuid4(),
+        )
+        acao = Acao(
+            id=uuid4(),
+            ativista_id="test",
+            campanha_id=alvo.campanha_id,
+            alvo_id=alvo.id,
+            canal=CanalEnum.TIKTOK,
+        )
+
+        orquestrador = OrquestradorCanais()
+        await orquestrador.executar(acao, alvo=alvo)
+
+        assert acao.proximo_passo_dados["perfil"] == "Perfil Pressão"
+        assert (
+            acao.proximo_passo_dados["url_postagem"]
+            == "https://www.tiktok.com/@perfil/video/1234567890"
+        )

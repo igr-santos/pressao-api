@@ -13,6 +13,7 @@ class TipoContato(str, enum.Enum):
     TELEFONE = "telefone"
     WHATSAPP = "whatsapp"
     INSTAGRAM = "instagram"
+    TIKTOK = "tiktok"
 
 
 class ModoAlvo(str, enum.Enum):
@@ -29,7 +30,7 @@ class Alvo(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome = Column(String(200), nullable=False)
-    contato = Column(String(200), nullable=False, index=True)
+    contato = Column(String(500), nullable=False, index=True)
     tipo_contato = Column(Enum(TipoContato), nullable=False)
     modo = Column(
         Enum(ModoAlvo, name="modoalvo", values_callable=_enum_valores),

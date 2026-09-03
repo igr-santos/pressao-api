@@ -566,7 +566,7 @@ Ativista → POST /api/acoes → Backend registra → Chama provider →
 → Aguarda webhook → Incrementa acoes_confirmadas → Concluído
 ```
 
-### Fluxo Manual (WhatsApp/Instagram)
+### Fluxo Manual (WhatsApp/Instagram/TikTok)
 
 ```text
 Ativista → POST /api/acoes → Backend registra → Gera link/texto →
@@ -574,6 +574,13 @@ Ativista → POST /api/acoes → Backend registra → Gera link/texto →
 → PATCH /confirmar → Incrementa acoes_confirmadas → Calcula métrica → Concluído
 ```
 
+Para **Instagram** e **TikTok**, cadastre o alvo assim:
+
+- `nome`: nome do perfil a ser comentado
+- `contato`: URL da postagem (Instagram) ou do vídeo (TikTok)
+
+O `proximo_passo.dados` devolve `texto`, `perfil` (= `nome`) e `url_postagem` (= `contato`).
+O plugin copia o texto e abre a URL da postagem/vídeo.
 ### Contador de Ações Confirmadas
 
 O total por campanha fica em `campanhas.acoes_confirmadas` (coluna desnormalizada) para leitura rápida — sem `COUNT(*)` em cada request.
@@ -596,7 +603,8 @@ O total por campanha fica em `campanhas.acoes_confirmadas` (coluna desnormalizad
 | E-mail (individual, legado) | API (SendGrid) | `WEBHOOK_AGUARDAR` | Automática (webhook `acao_id`) | ≤ 5s |
 | Telefone | API (Twilio) | `WEBHOOK_AGUARDAR` | Automática (webhook) | ≤ 5s |
 | WhatsApp | Manual (Link) | `REDIRECIONAR_LINK` | Manual (PATCH /confirmar) | 5s - 60s |
-| Instagram | Manual (Texto) | `EXIBIR_TEXTO_E_ABRIR_PERFIL` | Manual (PATCH /confirmar) | 5s - 60s |
+| Instagram | Manual (Texto + URL postagem) | `EXIBIR_TEXTO_E_ABRIR_PERFIL` | Manual (PATCH /confirmar) | 5s - 60s |
+| TikTok | Manual (Texto + URL vídeo) | `EXIBIR_TEXTO_E_ABRIR_PERFIL` | Manual (PATCH /confirmar) | 5s - 60s |
 
 ## 📬 E-mail multi-alvo e alvo agregado
 

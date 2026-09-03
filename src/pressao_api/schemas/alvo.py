@@ -13,6 +13,7 @@ class TipoContato(str, Enum):
     TELEFONE = "telefone"
     WHATSAPP = "whatsapp"
     INSTAGRAM = "instagram"
+    TIKTOK = "tiktok"
 
 
 class ModoAlvo(str, Enum):
@@ -22,7 +23,14 @@ class ModoAlvo(str, Enum):
 
 class AlvoBase(BaseModel):
     nome: str = Field(..., min_length=1, max_length=200, description="Nome do alvo")
-    contato: str = Field(..., max_length=200, description="Contato (email ou telefone)")
+    contato: str = Field(
+        ...,
+        max_length=500,
+        description=(
+            "Contato do alvo. Para email/telefone/whatsapp: valor do canal. "
+            "Para instagram/tiktok: URL da postagem ou vídeo a comentar."
+        ),
+    )
     tipo_contato: TipoContato = Field(..., description="Tipo de contato")
     metadados: dict[str, Any] | None = Field(None, description="Dados extras do alvo")
     ativo: bool = Field(default=True, description="Se o alvo está ativo")
@@ -38,13 +46,13 @@ class AlvoCreate(AlvoBase):
             raise ValueError("Formato de e-mail inválido")
         elif self.tipo_contato == TipoContato.TELEFONE and not validar_telefone(self.contato):
             raise ValueError("Formato de telefone inválido")
-        # WhatsApp e Instagram não têm validação específica
+        # WhatsApp, Instagram e TikTok não têm validação específica
         return self
 
 
 class AlvoUpdate(BaseModel):
     nome: str | None = Field(None, min_length=1, max_length=200)
-    contato: str | None = Field(None, max_length=200)
+    contato: str | None = Field(None, max_length=500)
     tipo_contato: TipoContato | None = None
     metadados: dict[str, Any] | None = None
     ativo: bool | None = None

@@ -62,6 +62,14 @@ class TestCompatibilidadeCanalAlvo:
         """Instagram NÃO é compatível com alvo do tipo email"""
         assert validar_compatibilidade_canal_alvo("instagram", "email") is False
 
+    def test_compatibilidade_tiktok_com_tiktok(self):
+        """TikTok é compatível com alvo do tipo tiktok"""
+        assert validar_compatibilidade_canal_alvo("tiktok", "tiktok") is True
+
+    def test_compatibilidade_tiktok_com_instagram(self):
+        """TikTok NÃO é compatível com alvo do tipo instagram"""
+        assert validar_compatibilidade_canal_alvo("tiktok", "instagram") is False
+
     def test_mensagem_erro_compatibilidade(self):
         """Testa mensagem de erro"""
         mensagem = obter_mensagem_erro_compatibilidade("email", "telefone")

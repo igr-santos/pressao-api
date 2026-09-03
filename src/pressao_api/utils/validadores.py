@@ -27,6 +27,7 @@ COMPATIBILIDADE_CANAL_CONTATO = {
     "telefone": ["telefone"],
     "whatsapp": ["whatsapp"],
     "instagram": ["instagram"],
+    "tiktok": ["tiktok"],
 }
 
 
@@ -35,8 +36,8 @@ def validar_compatibilidade_canal_alvo(canal: str, tipo_contato: str) -> bool:
     Valida se o canal da ação é compatível com o tipo de contato do alvo.
 
     Args:
-        canal: Canal da ação (email, telefone, whatsapp, instagram)
-        tipo_contato: Tipo de contato do alvo (email, telefone, whatsapp, instagram)
+        canal: Canal da ação (email, telefone, whatsapp, instagram, tiktok)
+        tipo_contato: Tipo de contato do alvo (email, telefone, whatsapp, instagram, tiktok)
 
     Returns:
         True se compatível, False caso contrário

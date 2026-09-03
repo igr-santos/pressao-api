@@ -18,21 +18,28 @@ from pressao_api.services.templates import sortear_template
 
 router = APIRouter(prefix="/alvos", tags=["Alvos"])
 
+CANAIS_COM_TEMPLATE = {
+    TipoContato.EMAIL: CanalEnum.EMAIL.value,
+    TipoContato.INSTAGRAM: CanalEnum.INSTAGRAM.value,
+    TipoContato.TIKTOK: CanalEnum.TIKTOK.value,
+}
+
 
 def _montar_resposta_com_template(
     alvo: Alvo,
-    templates_email: list[Template],
+    templates_por_canal: dict[str, list[Template]],
     total_membros: int | None = None,
 ) -> AlvoResponse:
-    """Monta a resposta do alvo sorteando um template quando o canal é email."""
+    """Monta a resposta do alvo sorteando template para canais que suportam preview."""
     resposta = AlvoResponse.model_validate(alvo)
     if total_membros is not None:
         resposta.total_membros = total_membros
 
-    if alvo.tipo_contato != TipoContato.EMAIL:
+    canal_template = CANAIS_COM_TEMPLATE.get(alvo.tipo_contato)
+    if not canal_template:
         return resposta
 
-    sorteado = sortear_template(templates_email)
+    sorteado = sortear_template(templates_por_canal.get(canal_template, []))
     if sorteado:
         resposta.template = TemplateSorteadoResponse.model_validate(sorteado)
 
@@ -79,15 +86,16 @@ async def listar_alvos_por_campanha(
     Lista alvos para exibição na campanha.
 
     E-mails individuais são agrupados em um alvo agregado; outros canais listam-se
-    individualmente. Alvos de e-mail vêm com template sorteado neste request.
+    individualmente. Alvos de e-mail, Instagram e TikTok vêm com template sorteado
+    neste request quando houver templates ativos no canal.
     """
     agregado_service = AlvoAgregadoService(db)
     alvos = await agregado_service.listar_para_exibicao(campanha_id, ativo)
 
     template_repo = TemplateRepository(db)
-    templates_email = await template_repo.listar_ativos_por_canal(
-        campanha_id, CanalEnum.EMAIL.value
-    )
+    templates_por_canal = {}
+    for canal in set(CANAIS_COM_TEMPLATE.values()):
+        templates_por_canal[canal] = await template_repo.listar_ativos_por_canal(campanha_id, canal)
 
     respostas: list[AlvoResponse] = []
     for alvo in alvos:
@@ -95,7 +103,7 @@ async def listar_alvos_por_campanha(
         if alvo.modo == ModoAlvo.AGREGADO:
             total_membros = await agregado_service.contar_membros_agregado(alvo.id)
         respostas.append(
-            _montar_resposta_com_template(alvo, templates_email, total_membros=total_membros)
+            _montar_resposta_com_template(alvo, templates_por_canal, total_membros=total_membros)
         )
     return respostas
 
@@ -106,23 +114,26 @@ async def obter_alvo(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Obtém um alvo; alvos de e-mail vêm com um template sorteado neste request."""
+    """Obtém um alvo; canais com template vêm com um template sorteado neste request."""
     repo = AlvoRepository(db)
     alvo = await repo.buscar_por_id(alvo_id)
     if not alvo:
         raise HTTPException(status_code=404, detail="Alvo não encontrado")
 
     template_repo = TemplateRepository(db)
-    templates_email = await template_repo.listar_ativos_por_canal(
-        alvo.campanha_id, CanalEnum.EMAIL.value
-    )
+    templates_por_canal = {}
+    canal_template = CANAIS_COM_TEMPLATE.get(alvo.tipo_contato)
+    if canal_template:
+        templates_por_canal[canal_template] = await template_repo.listar_ativos_por_canal(
+            alvo.campanha_id, canal_template
+        )
 
     total_membros = None
     if alvo.modo == ModoAlvo.AGREGADO:
         agregado_service = AlvoAgregadoService(db)
         total_membros = await agregado_service.contar_membros_agregado(alvo.id)
 
-    return _montar_resposta_com_template(alvo, templates_email, total_membros=total_membros)
+    return _montar_resposta_com_template(alvo, templates_por_canal, total_membros=total_membros)
 
 
 @router.put("/{alvo_id}", response_model=AlvoResponse)

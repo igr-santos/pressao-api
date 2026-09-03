@@ -12,6 +12,7 @@ class CanalEnum(str, Enum):
     TELEFONE = "telefone"
     WHATSAPP = "whatsapp"
     INSTAGRAM = "instagram"
+    TIKTOK = "tiktok"
 
 
 class StatusAcaoEnum(str, Enum):

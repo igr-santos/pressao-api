@@ -28,6 +28,7 @@ class OrquestradorCanais:
             CanalEnum.TELEFONE: self._estrategia_telefone,
             CanalEnum.WHATSAPP: self._estrategia_whatsapp,
             CanalEnum.INSTAGRAM: self._estrategia_instagram,
+            CanalEnum.TIKTOK: self._estrategia_tiktok,
         }
 
     async def executar(
@@ -270,16 +271,126 @@ class OrquestradorCanais:
         campanha: Campanha | None = None,
         template: Template | None = None,
     ):
-        """Estratégia para Instagram (Manual)."""
+        """Estratégia para Instagram (Manual).
+
+        Convenção do alvo:
+        - ``nome``: nome do perfil a ser comentado
+        - ``contato``: URL da postagem/vídeo a abrir após copiar o texto
+        """
+        nome_perfil = alvo.nome if alvo and alvo.nome else ""
+        url_postagem = self._resolver_url_postagem_social(
+            alvo.contato if alvo else None,
+            base_url="https://instagram.com",
+        )
         acao.status = StatusAcaoEnum.AGUARDANDO_ACAO_HUMANA
         acao.proximo_passo_tipo = ProximoPassoTipoEnum.EXIBIR_TEXTO_E_ABRIR_PERFIL
-        acao.proximo_passo_instrucao = "Copie o texto e envie no perfil do Instagram"
+        acao.proximo_passo_instrucao = (
+            "Copie o texto e comente na postagem do Instagram"
+        )
         acao.proximo_passo_dados = {
-            "perfil": "@alvo_instagram",
-            "texto": "Olá, esta é uma mensagem de pressão sobre o tema X. Por favor, considere nossa demanda.",
-            "url_perfil": "https://instagram.com/alvo_instagram",
+            "perfil": nome_perfil,
+            "texto": self._montar_texto_social(
+                acao,
+                alvo=alvo,
+                campanha=campanha,
+                template=template,
+                padrao=(
+                    "Olá, esta é uma mensagem de pressão sobre o tema X. "
+                    "Por favor, considere nossa demanda."
+                ),
+            ),
+            "url_postagem": url_postagem,
+            # BC: frontends antigos liam url_perfil; agora aponta para a postagem
+            "url_perfil": url_postagem,
+            "template_id": str(acao.template_id) if acao.template_id else None,
         }
         logger.info("Texto Instagram gerado", acao_id=str(acao.id))
+
+    async def _estrategia_tiktok(
+        self,
+        acao: Acao,
+        alvo: Alvo | None = None,
+        campanha: Campanha | None = None,
+        template: Template | None = None,
+    ):
+        """Estratégia para TikTok (Manual), equivalente ao fluxo de Instagram.
+
+        Convenção do alvo:
+        - ``nome``: nome do perfil a ser comentado
+        - ``contato``: URL do vídeo/postagem a abrir após copiar o texto
+        """
+        nome_perfil = alvo.nome if alvo and alvo.nome else ""
+        url_postagem = self._resolver_url_postagem_social(
+            alvo.contato if alvo else None,
+            base_url="https://www.tiktok.com",
+            prefixo_usuario="@",
+        )
+        acao.status = StatusAcaoEnum.AGUARDANDO_ACAO_HUMANA
+        acao.proximo_passo_tipo = ProximoPassoTipoEnum.EXIBIR_TEXTO_E_ABRIR_PERFIL
+        acao.proximo_passo_instrucao = "Copie o texto e comente no vídeo do TikTok"
+        acao.proximo_passo_dados = {
+            "perfil": nome_perfil,
+            "texto": self._montar_texto_social(
+                acao,
+                alvo=alvo,
+                campanha=campanha,
+                template=template,
+                padrao=(
+                    "Olá, esta é uma mensagem de pressão sobre o tema X. "
+                    "Por favor, considere nossa demanda."
+                ),
+            ),
+            "url_postagem": url_postagem,
+            # BC: frontends antigos liam url_perfil; agora aponta para a postagem
+            "url_perfil": url_postagem,
+            "template_id": str(acao.template_id) if acao.template_id else None,
+        }
+        logger.info("Texto TikTok gerado", acao_id=str(acao.id))
+
+    def _montar_texto_social(
+        self,
+        acao: Acao,
+        alvo: Alvo | None,
+        campanha: Campanha | None,
+        template: Template | None,
+        padrao: str,
+    ) -> str:
+        """Aplica os placeholders conhecidos ao texto social sorteado."""
+        texto = template.conteudo if template else padrao
+        valores = {
+            "alvo_nome": alvo.nome if alvo else "",
+            "campanha_nome": campanha.nome if campanha else "Campanha de pressão",
+            "ativista_nome": "" if acao.anonimo else (acao.ativista_nome or ""),
+            "acao_id": str(acao.id),
+        }
+        for chave, valor in valores.items():
+            texto = texto.replace("{" + chave + "}", valor)
+        return texto
+
+    def _resolver_url_postagem_social(
+        self,
+        contato: str | None,
+        base_url: str,
+        prefixo_usuario: str = "",
+    ) -> str:
+        """Resolve o link da postagem/vídeo a partir de ``alvo.contato``.
+
+        Preferência: URL completa (http/https). Fallback legado: trata handle
+        ``@usuario`` como perfil na base do canal.
+        """
+        if not contato:
+            return ""
+        contato = contato.strip()
+        if contato.startswith(("http://", "https://")):
+            return contato
+        return self._montar_url_social(contato, base_url, prefixo_usuario)
+
+    def _montar_url_social(self, perfil: str, base_url: str, prefixo_usuario: str = "") -> str:
+        """Transforma @usuario em URL e preserva URLs já configuradas."""
+        perfil = perfil.strip()
+        if perfil.startswith(("http://", "https://")):
+            return perfil
+        return f"{base_url}/{prefixo_usuario}{perfil.lstrip('@')}"
 
 
 orquestrador = OrquestradorCanais()
