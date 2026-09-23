@@ -127,7 +127,7 @@ Acesse Configurações > Pressão Plugin e preencha:
 | Candidatos a pressionar | `pressao_candidatos` | Busca/seleção do `[pressao_fluxo]` |
 | Candidatos apoiadores | `pressao_candidatos_apoiadores` | Botão/lista “já apoiam”, `[pressao_candidatos]`, import CSV |
 | Limite de marcação (fluxo) | `pressao_fluxo_limite_candidatos` | Máximo de @ por mensagem no `[pressao_fluxo]` (padrão `5`) |
-| Contador antes de abrir IG | `pressao_fluxo_countdown_abrir` | Se ligado: toast 5s antes de abrir o Instagram; se desligado (padrão): abre no clique sem toast |
+| Contador antes de abrir IG | `pressao_fluxo_countdown_abrir` | Se ligado: toast com countdown antes de abrir; se desligado (padrão): abre no clique. Mobile tenta o app; desktop abre nova aba |
 | Ajuda do fluxo | `pressao_fluxo_ajuda` | Título + conteúdo HTML do modal `?` no `[pressao_fluxo]` |
 | Compartilhamento | `pressao_compartilhamento` | Textos, links, deep links e imagens do botão de compartilhar |
 
@@ -316,6 +316,8 @@ Renderiza os candidatos da option `pressao_candidatos_apoiadores` (já apoiam a 
 ### `[pressao_fluxo]` — fluxo único sequencial (Instagram v1)
 
 Wizard isolado de `[pressao_alvos]`: seleção de candidatos → copiar/abrir Instagram → confirmação humana → formulário de newsletter → compartilhar. **Cria e confirma a ação na API apenas na saída do formulário** (“Quero receber atualizações” com dados, ou “Agora não” sem ativista). Telas pós-Continuar são bloqueantes (sem dismiss por backdrop/Escape); no **mobile** abrem como **drawer tela cheia** (entra da direita, como o overlay de ação — distinto do bottom sheet da lista de candidatos); no desktop a troca continua inline no card. A lista de candidatos fecha no X ou backdrop.
+
+**Abrir Instagram:** no mobile, “Copiar e abrir” tenta o **app** (Android Intent / iOS Universal Link) **sem nova aba**, para o X/voltar do app devolver à tela de confirmação do fluxo; no desktop abre a URL HTTPS em nova aba. A option `pressao_fluxo_countdown_abrir` (toast antes de abrir) permanece opcional.
 
 ```text
 [pressao_fluxo alvo_id="uuid-do-alvo" canal="instagram"]

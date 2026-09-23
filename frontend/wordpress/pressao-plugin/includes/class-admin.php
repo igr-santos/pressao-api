@@ -700,10 +700,10 @@ class PressaoPlugin_Admin {
                    name="pressao_fluxo_countdown_abrir"
                    value="1"
                    <?php checked($value, 1); ?> />
-            <?php esc_html_e('Aguardar contador (5s) e mostrar aviso antes de abrir o Instagram', 'pressao-plugin'); ?>
+            <?php esc_html_e('Aguardar contador e mostrar aviso antes de abrir o Instagram', 'pressao-plugin'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('Desligado (padrão): abre o link no clique, sem toast. Ligado: toast com countdown e só então abre — em alguns navegadores o popup pode ser bloqueado.', 'pressao-plugin'); ?>
+            <?php esc_html_e('Desligado (padrão): abre no clique, sem toast. Ligado: toast com countdown e só então abre. No mobile a abertura tenta o app Instagram (para o voltar nativo retornar ao fluxo); no desktop abre em nova aba.', 'pressao-plugin'); ?>
         </p>
         <?php
     }
