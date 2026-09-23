@@ -9,7 +9,7 @@ replicaCount: 1
 image:
   repository: nossas/pressao-api
   pullPolicy: IfNotPresent
-  tag: 83d31b1c
+  tag: 46f36d20
 
 imagePullSecrets: []
 
