@@ -1,0 +1,73 @@
+/* Pressão Plugin — admin settings */
+
+.pressao-settings-wrap .pressao-settings-tabs {
+	margin-bottom: 1.25rem;
+}
+
+.pressao-settings-tab-panel {
+	max-width: 960px;
+}
+
+.pressao-settings-tab-panel > form > h2:first-of-type,
+.pressao-settings-tab-panel .form-table + h2 {
+	margin-top: 0.5rem;
+}
+
+.pressao-apoiadores-tools {
+	margin: 2rem 0 0;
+	max-width: 720px;
+}
+
+.pressao-admin-card {
+	padding: 1rem 1.25rem;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	margin-bottom: 1.25rem;
+}
+
+.pressao-admin-card h3 {
+	margin-top: 0;
+}
+
+.pressao-admin-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.pressao-apoiadores-remove-select {
+	width: 100%;
+	max-width: 480px;
+}
+
+.pressao-usage {
+	max-width: 720px;
+}
+
+.pressao-usage-examples {
+	line-height: 1.8;
+}
+
+.pressao-lgpd-info {
+	margin-top: 1.5rem;
+	padding: 15px;
+	background: #f0f8ff;
+	border-radius: 6px;
+	border-left: 4px solid #0073aa;
+}
+
+.pressao-lgpd-info h3 {
+	margin-top: 0;
+}
+
+.pressao-lgpd-info p {
+	margin-bottom: 0;
+}
+
+.pressao-candidato-image-preview img,
+.pressao-share-imagem-preview img {
+	max-width: 96px;
+	height: auto;
+}

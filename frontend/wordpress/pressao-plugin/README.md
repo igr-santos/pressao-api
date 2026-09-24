@@ -74,13 +74,14 @@ pressao-plugin/
 ├── pressao-plugin.php          # Bootstrap (singleton) + enqueue de assets
 ├── includes/
 │   ├── class-main.php          # Funcionalidades gerais
-│   ├── class-admin.php         # Página de configurações
+│   ├── class-admin.php         # Página de configurações (abas)
 │   ├── class-candidatos-import.php  # CSV apoiadores + remoção
 │   ├── class-api.php           # Cliente HTTP: Keycloak + API Pressão
 │   ├── class-shortcode.php     # Shortcodes e renderização SSR
 │   └── class-ajax.php          # AJAX handlers
 ├── assets/
 │   ├── css/
+│   │   ├── admin.css           # Tabs, cards de ferramentas, callout LGPD
 │   │   ├── style.css           # Tokens, mask-image dos ícones, @font-face
 │   │   └── fluxo.css           # UI do shortcode [pressao_fluxo]
 │   ├── fonts/                  # Anton + Host_Grotesk (fluxo); NeueHaas*.woff* opcional p/ alvos
@@ -112,24 +113,37 @@ docker compose exec wordpress wp plugin activate pressao-plugin
 
 ### Configurando
 
-Acesse Configurações > Pressão Plugin e preencha:
+Acesse **Configurações → Pressão Plugin**. A página usa abas:
 
-| Campo | Option WP | Descrição |
-|-------|-----------|-----------|
-| URL do Keycloak | `pressao_keycloak_url` | Endereço do servidor Keycloak |
-| Realm | `pressao_realm` | Realm do Keycloak |
-| Client ID | `pressao_client_id` | ID do client configurado |
-| Client Secret | `pressao_client_secret` | Secret do client |
-| URL da API | `pressao_api_url` | Endereço da API Pressão |
-| ID da Campanha | `pressao_campaign_id` | Campanha padrão dos shortcodes |
-| Título do Widget | `pressao_widget_title` | Título exibido em `[pressao_widget]` |
-| Duração da sessão | `pressao_session_duration` | TTL dos cookies em segundos (padrão `86400`) |
-| Candidatos a pressionar | `pressao_candidatos` | Busca/seleção do `[pressao_fluxo]` |
-| Candidatos apoiadores | `pressao_candidatos_apoiadores` | Botão/lista “já apoiam”, `[pressao_candidatos]`, import CSV |
-| Limite de marcação (fluxo) | `pressao_fluxo_limite_candidatos` | Máximo de @ por mensagem no `[pressao_fluxo]` (padrão `5`) |
-| Contador antes de abrir IG | `pressao_fluxo_countdown_abrir` | Se ligado: toast com countdown antes de abrir; se desligado (padrão): abre no clique. Mobile tenta o app; desktop abre nova aba |
-| Ajuda do fluxo | `pressao_fluxo_ajuda` | Título + conteúdo HTML do modal `?` no `[pressao_fluxo]` |
-| Compartilhamento | `pressao_compartilhamento` | Textos, links, deep links e imagens do botão de compartilhar |
+| Aba | Conteúdo |
+|-----|----------|
+| **Conexão** | Keycloak + URL da API |
+| **Geral** | ID da campanha, título do widget, sessão/identificação do ativista |
+| **Candidatos** | Lista a pressionar + limite / countdown / ajuda do `[pressao_fluxo]` |
+| **Apoiadores** | Lista “já apoiam” + import/remover CSV |
+| **Compartilhamento** | Botão e overlay de compartilhar em `[pressao_alvos]` |
+| **Documentação** | Shortcodes (“Como usar”) e nota sobre LGPD |
+
+Cada aba de opções salva só o seu grupo (`pressao_settings_{aba}`), para não sobrescrever as demais. **Alvos** e **Templates** da API ainda são geridos fora do painel; no futuro entram como abas de primeiro nível (não dentro de Geral).
+
+| Campo | Option WP | Aba | Descrição |
+|-------|-----------|-----|-----------|
+| URL do Keycloak | `pressao_keycloak_url` | Conexão | Endereço do servidor Keycloak |
+| Realm | `pressao_realm` | Conexão | Realm do Keycloak |
+| Client ID | `pressao_client_id` | Conexão | ID do client configurado |
+| Client Secret | `pressao_client_secret` | Conexão | Secret do client |
+| URL da API | `pressao_api_url` | Conexão | Endereço da API Pressão |
+| ID da Campanha | `pressao_campaign_id` | Geral | Campanha padrão dos shortcodes |
+| Título do Widget | `pressao_widget_title` | Geral | Título exibido em `[pressao_widget]` |
+| Intervalo confirmar identidade | `pressao_ativista_confirm_interval` | Geral | Minutos até perguntar de novo (padrão `10`) |
+| Título do formulário | `pressao_ativista_form_title` | Geral | Título do formulário de identificação |
+| Duração da sessão | `pressao_session_duration` | Geral | TTL dos cookies em segundos (padrão `86400`) |
+| Candidatos a pressionar | `pressao_candidatos` | Candidatos | Busca/seleção do `[pressao_fluxo]` |
+| Limite de marcação (fluxo) | `pressao_fluxo_limite_candidatos` | Candidatos | Máximo de @ por mensagem (padrão `5`) |
+| Contador antes de abrir IG | `pressao_fluxo_countdown_abrir` | Candidatos | Se ligado: toast com countdown antes de abrir; se desligado (padrão): abre no clique. Mobile tenta o app; desktop abre nova aba |
+| Ajuda do fluxo | `pressao_fluxo_ajuda` | Candidatos | Título + conteúdo HTML do modal `?` no `[pressao_fluxo]` |
+| Candidatos apoiadores | `pressao_candidatos_apoiadores` | Apoiadores | Botão/lista “já apoiam”, `[pressao_candidatos]`, import CSV |
+| Compartilhamento | `pressao_compartilhamento` | Compartilhamento | Textos, links, deep links e imagens do botão de compartilhar |
 
 ### Configuração compartilhada via wp-config.php (multisite)
 
@@ -191,7 +205,7 @@ O botão `?` em todas as telas do `[pressao_fluxo]` abre esse conteúdo. No topo
 
 ### Configuração de compartilhamento
 
-A seção "Configurações de Compartilhamento" controla o botão exibido **sempre por último** em `[pressao_alvos]`.
+A seção **Compartilhamento** (aba homônima no admin) controla o botão exibido **sempre por último** em `[pressao_alvos]`.
 
 Campos principais da option `pressao_compartilhamento`:
 

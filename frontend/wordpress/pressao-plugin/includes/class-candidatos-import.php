@@ -80,7 +80,7 @@ class PressaoPlugin_Candidatos_Import {
 
         check_admin_referer(self::ACTION_IMPORT);
 
-        $redirect = admin_url('options-general.php?page=pressao-settings');
+        $redirect = admin_url('options-general.php?page=pressao-settings&tab=apoiadores');
 
         if (empty($_FILES['pressao_apoiadores_csv']['tmp_name'])) {
             $this->set_notice('error', __('Selecione um arquivo CSV para importar.', 'pressao-plugin'));
@@ -265,7 +265,7 @@ class PressaoPlugin_Candidatos_Import {
 
         check_admin_referer(self::ACTION_REMOVE);
 
-        $redirect = admin_url('options-general.php?page=pressao-settings');
+        $redirect = admin_url('options-general.php?page=pressao-settings&tab=apoiadores');
         $selected = isset($_POST['pressao_apoiadores_remove']) ? (array) $_POST['pressao_apoiadores_remove'] : [];
         $handles = [];
         foreach ($selected as $raw) {
