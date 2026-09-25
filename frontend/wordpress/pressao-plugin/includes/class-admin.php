@@ -235,13 +235,9 @@ class PressaoPlugin_Admin {
             'pressao_ativista_section'
         );
 
-        // Candidatos a pressionar + opções do fluxo
+        // Candidatos a pressionar: lista via AJAX; form só opções do fluxo
         $page_candidatos = $this->get_settings_page_for_tab('candidatos');
         $group_candidatos = $this->get_option_group_for_tab('candidatos');
-        register_setting($group_candidatos, 'pressao_candidatos', [
-            'sanitize_callback' => [$this, 'sanitize_candidatos'],
-            'default' => [],
-        ]);
         register_setting($group_candidatos, 'pressao_fluxo_limite_candidatos', [
             'sanitize_callback' => [$this, 'sanitize_fluxo_limite_candidatos'],
             'default' => 5,
@@ -260,18 +256,10 @@ class PressaoPlugin_Admin {
         ]);
 
         add_settings_section(
-            'pressao_candidatos_section',
-            __('Candidatos a pressionar', 'pressao-plugin'),
+            'pressao_candidatos_fluxo_section',
+            __('Opções do fluxo', 'pressao-plugin'),
             [$this, 'render_candidatos_pressao_section'],
             $page_candidatos
-        );
-
-        add_settings_field(
-            'pressao_candidatos',
-            __('Lista (busca do fluxo)', 'pressao-plugin'),
-            [$this, 'render_candidatos_field'],
-            $page_candidatos,
-            'pressao_candidatos_section'
         );
 
         add_settings_field(
@@ -279,7 +267,7 @@ class PressaoPlugin_Admin {
             __('Limite de candidatos por marcação (fluxo)', 'pressao-plugin'),
             [$this, 'render_fluxo_limite_field'],
             $page_candidatos,
-            'pressao_candidatos_section'
+            'pressao_candidatos_fluxo_section'
         );
 
         add_settings_field(
@@ -287,7 +275,7 @@ class PressaoPlugin_Admin {
             __('Contador antes de abrir Instagram', 'pressao-plugin'),
             [$this, 'render_fluxo_countdown_abrir_field'],
             $page_candidatos,
-            'pressao_candidatos_section'
+            'pressao_candidatos_fluxo_section'
         );
 
         add_settings_field(
@@ -295,31 +283,10 @@ class PressaoPlugin_Admin {
             __('Ajuda do fluxo (?)', 'pressao-plugin'),
             [$this, 'render_fluxo_ajuda_field'],
             $page_candidatos,
-            'pressao_candidatos_section'
+            'pressao_candidatos_fluxo_section'
         );
 
-        // Apoiadores
-        $page_apoiadores = $this->get_settings_page_for_tab('apoiadores');
-        $group_apoiadores = $this->get_option_group_for_tab('apoiadores');
-        register_setting($group_apoiadores, 'pressao_candidatos_apoiadores', [
-            'sanitize_callback' => [$this, 'sanitize_candidatos'],
-            'default' => [],
-        ]);
-
-        add_settings_section(
-            'pressao_candidatos_apoiadores_section',
-            __('Candidatos apoiadores', 'pressao-plugin'),
-            [$this, 'render_candidatos_apoiadores_section'],
-            $page_apoiadores
-        );
-
-        add_settings_field(
-            'pressao_candidatos_apoiadores',
-            __('Lista (já apoiam)', 'pressao-plugin'),
-            [$this, 'render_candidatos_apoiadores_field'],
-            $page_apoiadores,
-            'pressao_candidatos_apoiadores_section'
-        );
+        // Apoiadores: listagem AJAX (sem options.php); tools CSV abaixo
 
         // Compartilhamento
         $page_share = $this->get_settings_page_for_tab('compartilhamento');
@@ -410,6 +377,22 @@ class PressaoPlugin_Admin {
             <div class="pressao-settings-tab-panel" data-tab="<?php echo esc_attr($current_tab); ?>">
                 <?php if ($current_tab === 'documentacao') : ?>
                     <?php $this->render_documentacao_tab(); ?>
+                <?php elseif ($current_tab === 'apoiadores') : ?>
+                    <h2><?php esc_html_e('Candidatos apoiadores', 'pressao-plugin'); ?></h2>
+                    <p><?php esc_html_e('Base dos que já apoiam a pauta: botão/lista do [pressao_fluxo] e shortcode [pressao_candidatos]. Use as ferramentas abaixo para importar CSV ou remover da base.', 'pressao-plugin'); ?></p>
+                    <?php PressaoPlugin_Candidatos_Admin_List::render(PressaoPlugin_Candidatos_Admin_List::OPTION_APOIADORES); ?>
+                    <?php $this->render_apoiadores_tools(); ?>
+                <?php elseif ($current_tab === 'candidatos') : ?>
+                    <h2><?php esc_html_e('Candidatos a pressionar', 'pressao-plugin'); ?></h2>
+                    <p><?php esc_html_e('Base usada na busca/seleção do [pressao_fluxo] (candidatos a pressionar).', 'pressao-plugin'); ?></p>
+                    <?php PressaoPlugin_Candidatos_Admin_List::render(PressaoPlugin_Candidatos_Admin_List::OPTION_PRESSIONAR); ?>
+                    <form method="post" action="options.php" class="pressao-settings-fluxo-form">
+                        <?php
+                        settings_fields($this->get_option_group_for_tab('candidatos'));
+                        do_settings_sections($this->get_settings_page_for_tab('candidatos'));
+                        submit_button();
+                        ?>
+                    </form>
                 <?php else : ?>
                     <form method="post" action="options.php">
                         <?php
@@ -420,9 +403,6 @@ class PressaoPlugin_Admin {
                         submit_button();
                         ?>
                     </form>
-                    <?php if ($current_tab === 'apoiadores') : ?>
-                        <?php $this->render_apoiadores_tools(); ?>
-                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -430,35 +410,87 @@ class PressaoPlugin_Admin {
     }
 
     private function render_documentacao_tab() {
+        $shortcodes = [
+            [
+                'tag' => '[pressao_alvos]',
+                'title' => __('Lista de alvos com ações', 'pressao-plugin'),
+                'body' => __('Shortcode principal: lista os canais da campanha (Instagram, TikTok, e-mail etc.) e permite ao ativista agir. Se o compartilhamento estiver ativo na aba Compartilhamento, o botão aparece por último na lista.', 'pressao-plugin'),
+                'example' => '[pressao_alvos campaign="uuid" show_ativista_form="yes" ordem="instagram,tiktok,email" tempo_email="1 min"]',
+            ],
+            [
+                'tag' => '[pressao_fluxo]',
+                'title' => __('Fluxo sequencial (Instagram)', 'pressao-plugin'),
+                'body' => __('Wizard isolado por alvo/canal: marcar candidatos a pressionar, copiar/abrir Instagram, confirmar e opcionalmente deixar contato. Usa as bases das abas Candidatos e Apoiadores. Requer alvo_id e canal.', 'pressao-plugin'),
+                'example' => '[pressao_fluxo alvo_id="uuid-do-alvo" canal="instagram"]',
+            ],
+            [
+                'tag' => '[pressao_candidatos]',
+                'title' => __('Bloco de candidatos apoiadores', 'pressao-plugin'),
+                'body' => __('Exibe a base editorial de quem já apoia a pauta (option pressao_candidatos_apoiadores), configurada na aba Apoiadores.', 'pressao-plugin'),
+                'example' => '[pressao_candidatos title="Conheça os candidatos"]',
+            ],
+            [
+                'tag' => '[pressao_contador]',
+                'title' => __('Contador de ações confirmadas', 'pressao-plugin'),
+                'body' => __('Mostra o total de ações confirmadas da campanha (atualiza com cache curto) e pode animar quando o ativista conclui uma ação na mesma página.', 'pressao-plugin'),
+                'example' => '[pressao_contador campaign="uuid" label="ações confirmadas"]',
+            ],
+            [
+                'tag' => '[pressao_progresso]',
+                'title' => __('Progresso pessoal do ativista', 'pressao-plugin'),
+                'body' => __('Barra done/total com base nas ações realizadas neste navegador (cookie). Zera quando a sessão do ativista é limpa (“Não sou eu” ou expiração).', 'pressao-plugin'),
+                'example' => '[pressao_progresso]',
+            ],
+            [
+                'tag' => '[pressao_widget]',
+                'title' => __('Widget completo (legado)', 'pressao-plugin'),
+                'body' => __('Combina formulário e lista num único bloco. Prefira [pressao_alvos] para campanhas novas com canais e compartilhamento.', 'pressao-plugin'),
+                'example' => '[pressao_widget title="Meu Widget"]',
+            ],
+            [
+                'tag' => '[pressao_form]',
+                'title' => __('Somente formulário (legado)', 'pressao-plugin'),
+                'body' => __('Renderiza só o formulário de identificação/ação do widget antigo.', 'pressao-plugin'),
+                'example' => '[pressao_form button_text="Enviar"]',
+            ],
+            [
+                'tag' => '[pressao_list]',
+                'title' => __('Somente lista (legado)', 'pressao-plugin'),
+                'body' => __('Renderiza só a lista do widget antigo, sem o formulário.', 'pressao-plugin'),
+                'example' => '[pressao_list limit="5"]',
+            ],
+        ];
         ?>
-        <div class="pressao-usage">
-            <h2><?php esc_html_e('Como usar', 'pressao-plugin'); ?></h2>
-            <p><?php esc_html_e('Shortcodes disponíveis:', 'pressao-plugin'); ?></p>
-            <ul>
-                <li><code>[pressao_widget]</code> - <?php esc_html_e('Widget principal', 'pressao-plugin'); ?></li>
-                <li><code>[pressao_form]</code> - <?php esc_html_e('Apenas formulário', 'pressao-plugin'); ?></li>
-                <li><code>[pressao_list]</code> - <?php esc_html_e('Apenas lista', 'pressao-plugin'); ?></li>
-                <li><code>[pressao_alvos]</code> - <?php esc_html_e('Lista de alvos com ações (inclui compartilhamento se ativo no admin)', 'pressao-plugin'); ?></li>
-                <li><code>[pressao_candidatos]</code> - <?php esc_html_e('Bloco de candidatos apoiadores (já apoiam a pauta)', 'pressao-plugin'); ?></li>
-                <li><code>[pressao_fluxo]</code> - <?php esc_html_e('Fluxo único sequencial por alvo/canal (Instagram no v1)', 'pressao-plugin'); ?></li>
-            </ul>
+        <div class="pressao-docs">
+            <header class="pressao-docs-intro">
+                <h2><?php esc_html_e('Como usar', 'pressao-plugin'); ?></h2>
+                <p>
+                    <?php esc_html_e('O Pressão Plugin conecta este site à API de pressão multicanal. Configure a conexão (Keycloak + API) e o ID da campanha nas abas Conexão e Geral; depois insira os shortcodes nas páginas ou posts.', 'pressao-plugin'); ?>
+                </p>
+                <p class="description">
+                    <?php esc_html_e('Atributos como campaign usam o ID da campanha da aba Geral quando omitidos. Detalhes completos de atributos estão no README do plugin.', 'pressao-plugin'); ?>
+                </p>
+            </header>
 
-            <p><?php esc_html_e('Exemplos:', 'pressao-plugin'); ?></p>
-            <p class="pressao-usage-examples">
-                <code>[pressao_widget title="Meu Widget"]</code><br>
-                <code>[pressao_form button_text="Enviar"]</code><br>
-                <code>[pressao_list limit="5"]</code><br>
-                <code>[pressao_alvos campaign="123" show_ativista_form="yes" ordem="instagram,tiktok,email" tempo_email="1 min"]</code><br>
-                <code>[pressao_candidatos title="Conheça os candidatos"]</code><br>
-                <code>[pressao_fluxo alvo_id="uuid-do-alvo" canal="instagram"]</code>
-            </p>
+            <div class="pressao-docs-grid">
+                <?php foreach ($shortcodes as $item) : ?>
+                    <article class="pressao-docs-card">
+                        <h3 class="pressao-docs-card-title">
+                            <code><?php echo esc_html($item['tag']); ?></code>
+                            <span><?php echo esc_html($item['title']); ?></span>
+                        </h3>
+                        <p class="pressao-docs-card-body"><?php echo esc_html($item['body']); ?></p>
+                        <pre class="pressao-docs-example"><code><?php echo esc_html($item['example']); ?></code></pre>
+                    </article>
+                <?php endforeach; ?>
+            </div>
 
-            <div class="pressao-lgpd-info">
-                <h3><?php esc_html_e('Sobre a LGPD', 'pressao-plugin'); ?></h3>
+            <aside class="pressao-lgpd-info" aria-labelledby="pressao-docs-lgpd-title">
+                <h3 id="pressao-docs-lgpd-title"><?php esc_html_e('Sobre a LGPD', 'pressao-plugin'); ?></h3>
                 <p>
                     <?php esc_html_e('O plugin armazena apenas o nome do ativista no navegador para identificação. Email e telefone são opcionais e só são enviados ao servidor quando o ativista realiza uma ação. A confirmação de identidade exibe apenas o nome, respeitando a Lei Geral de Proteção de Dados.', 'pressao-plugin'); ?>
                 </p>
-            </div>
+            </aside>
         </div>
         <?php
     }
@@ -523,51 +555,9 @@ class PressaoPlugin_Admin {
 
     public function render_candidatos_pressao_section() {
         echo '<p>' . esc_html__(
-            'Base usada na busca/seleção do [pressao_fluxo] (candidatos a pressionar).',
+            'Preferências do [pressao_fluxo] (lista de candidatos fica acima e salva item a item).',
             'pressao-plugin'
         ) . '</p>';
-    }
-
-    public function render_candidatos_apoiadores_section() {
-        echo '<p>' . esc_html__(
-            'Base dos que já apoiam a pauta: botão/lista do [pressao_fluxo] e shortcode [pressao_candidatos]. Use as ferramentas abaixo do formulário para importar CSV ou remover da base.',
-            'pressao-plugin'
-        ) . '</p>';
-    }
-
-    public function render_candidatos_field() {
-        $this->render_candidatos_repeater('pressao_candidatos');
-    }
-
-    public function render_candidatos_apoiadores_field() {
-        $this->render_candidatos_repeater('pressao_candidatos_apoiadores');
-    }
-
-    /**
-     * @param string $option_name pressao_candidatos|pressao_candidatos_apoiadores
-     */
-    private function render_candidatos_repeater($option_name) {
-        $candidatos = get_option($option_name, []);
-        if (!is_array($candidatos) || empty($candidatos)) {
-            $candidatos = [[]];
-        }
-        ?>
-        <div class="pressao-candidatos-admin"
-             data-option="<?php echo esc_attr($option_name); ?>"
-             data-next-index="<?php echo esc_attr(count($candidatos)); ?>">
-            <div class="pressao-candidatos-list">
-                <?php foreach ($candidatos as $index => $candidato) : ?>
-                    <?php $this->render_candidato_admin_item((int) $index, $candidato, $option_name); ?>
-                <?php endforeach; ?>
-            </div>
-            <button type="button" class="button pressao-add-candidato">
-                <?php esc_html_e('Adicionar candidato', 'pressao-plugin'); ?>
-            </button>
-            <p class="description">
-                <?php esc_html_e('As imagens usam a Biblioteca de Mídia do WordPress. Se o WordPress enviar mídias para S3 no futuro, o plugin continuará usando o mesmo attachment ID.', 'pressao-plugin'); ?>
-            </p>
-        </div>
-        <?php
     }
 
     private function render_apoiadores_tools() {
@@ -652,140 +642,15 @@ class PressaoPlugin_Admin {
         <?php
     }
 
-    private function render_candidato_admin_item($index, $candidato, $option_name = 'pressao_candidatos') {
-        $candidato = is_array($candidato) ? $candidato : [];
-        $imagem_id = absint($candidato['imagem_id'] ?? 0);
-        $imagem_url = $imagem_id ? wp_get_attachment_image_url($imagem_id, 'thumbnail') : '';
-        $option_name = preg_replace('/[^a-z0-9_]/', '', (string) $option_name);
-        ?>
-        <div class="pressao-candidato-admin-item" data-index="<?php echo esc_attr($index); ?>">
-            <p>
-                <label>
-                    <?php esc_html_e('Nome', 'pressao-plugin'); ?><br>
-                    <input type="text"
-                           name="<?php echo esc_attr($option_name); ?>[<?php echo esc_attr($index); ?>][nome]"
-                           value="<?php echo esc_attr($candidato['nome'] ?? ''); ?>"
-                           class="regular-text" />
-                </label>
-            </p>
-            <p>
-                <label>
-                    <?php esc_html_e('Cargo', 'pressao-plugin'); ?><br>
-                    <input type="text"
-                           name="<?php echo esc_attr($option_name); ?>[<?php echo esc_attr($index); ?>][cargo]"
-                           value="<?php echo esc_attr($candidato['cargo'] ?? ''); ?>"
-                           class="regular-text" />
-                </label>
-            </p>
-            <p>
-                <label>
-                    <?php esc_html_e('Partido/organização', 'pressao-plugin'); ?><br>
-                    <input type="text"
-                           name="<?php echo esc_attr($option_name); ?>[<?php echo esc_attr($index); ?>][partido]"
-                           value="<?php echo esc_attr($candidato['partido'] ?? ''); ?>"
-                           class="regular-text" />
-                </label>
-            </p>
-            <p>
-                <label>
-                    <?php esc_html_e('Instagram (@)', 'pressao-plugin'); ?><br>
-                    <input type="text"
-                           name="<?php echo esc_attr($option_name); ?>[<?php echo esc_attr($index); ?>][link_url]"
-                           value="<?php echo esc_attr($candidato['link_url'] ?? ''); ?>"
-                           class="regular-text"
-                           placeholder="@candidato" />
-                </label>
-            </p>
-            <p>
-                <label>
-                    <?php esc_html_e('Descrição', 'pressao-plugin'); ?><br>
-                    <textarea name="<?php echo esc_attr($option_name); ?>[<?php echo esc_attr($index); ?>][descricao]"
-                              rows="3"
-                              class="large-text"><?php echo esc_textarea($candidato['descricao'] ?? ''); ?></textarea>
-                </label>
-            </p>
-            <div class="pressao-candidato-image-field">
-                <input type="hidden"
-                       class="pressao-candidato-image-id"
-                       name="<?php echo esc_attr($option_name); ?>[<?php echo esc_attr($index); ?>][imagem_id]"
-                       value="<?php echo esc_attr($imagem_id); ?>" />
-                <div class="pressao-candidato-image-preview">
-                    <?php if ($imagem_url) : ?>
-                        <img src="<?php echo esc_url($imagem_url); ?>" alt="" />
-                    <?php endif; ?>
-                </div>
-                <button type="button" class="button pressao-select-candidato-image">
-                    <?php esc_html_e('Selecionar imagem', 'pressao-plugin'); ?>
-                </button>
-                <button type="button" class="button pressao-remove-candidato-image">
-                    <?php esc_html_e('Remover imagem', 'pressao-plugin'); ?>
-                </button>
-            </div>
-            <p>
-                <button type="button" class="button link-delete pressao-remove-candidato">
-                    <?php esc_html_e('Remover candidato', 'pressao-plugin'); ?>
-                </button>
-            </p>
-            <hr>
-        </div>
-        <?php
-    }
-
     public function sanitize_candidatos($value) {
-        if (!is_array($value)) {
-            return [];
-        }
-
-        $sanitized = [];
-        foreach ($value as $candidato) {
-            if (!is_array($candidato)) {
-                continue;
-            }
-
-            $nome = sanitize_text_field($candidato['nome'] ?? '');
-            $cargo = sanitize_text_field($candidato['cargo'] ?? '');
-            $partido = sanitize_text_field($candidato['partido'] ?? '');
-            $descricao = sanitize_textarea_field($candidato['descricao'] ?? '');
-            $link_url = $this->sanitize_instagram_handle($candidato['link_url'] ?? '');
-            $imagem_id = absint($candidato['imagem_id'] ?? 0);
-
-            if ($nome === '' && $cargo === '' && $partido === '' && $descricao === '' && $link_url === '' && !$imagem_id) {
-                continue;
-            }
-
-            $sanitized[] = [
-                'nome' => $nome,
-                'cargo' => $cargo,
-                'partido' => $partido,
-                'descricao' => $descricao,
-                'link_url' => $link_url,
-                'imagem_id' => $imagem_id,
-            ];
-        }
-
-        return $sanitized;
+        return PressaoPlugin_Candidatos_Admin_List::sanitize_list($value);
     }
 
     /**
      * Normaliza @handle do Instagram (aceita URL de perfil ou @user).
      */
     public function sanitize_instagram_handle($value) {
-        $value = trim((string) $value);
-        if ($value === '') {
-            return '';
-        }
-
-        if (preg_match('#instagram\.com/([^/?#]+)#i', $value, $matches)) {
-            $value = $matches[1];
-        }
-
-        $value = ltrim($value, '@');
-        $value = preg_replace('/[^A-Za-z0-9._]/', '', $value);
-        if ($value === '') {
-            return '';
-        }
-
-        return '@' . $value;
+        return PressaoPlugin_Candidatos_Admin_List::sanitize_instagram_handle($value);
     }
 
     public function sanitize_fluxo_limite_candidatos($value) {

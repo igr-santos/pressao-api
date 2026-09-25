@@ -75,6 +75,7 @@ pressao-plugin/
 ├── includes/
 │   ├── class-main.php          # Funcionalidades gerais
 │   ├── class-admin.php         # Página de configurações (abas)
+│   ├── class-candidatos-admin-list.php  # Tabela/expand/busca/paginação + AJAX
 │   ├── class-candidatos-import.php  # CSV apoiadores + remoção
 │   ├── class-api.php           # Cliente HTTP: Keycloak + API Pressão
 │   ├── class-shortcode.php     # Shortcodes e renderização SSR
@@ -124,7 +125,7 @@ Acesse **Configurações → Pressão Plugin**. A página usa abas:
 | **Compartilhamento** | Botão e overlay de compartilhar em `[pressao_alvos]` |
 | **Documentação** | Shortcodes (“Como usar”) e nota sobre LGPD |
 
-Cada aba de opções salva só o seu grupo (`pressao_settings_{aba}`), para não sobrescrever as demais. **Alvos** e **Templates** da API ainda são geridos fora do painel; no futuro entram como abas de primeiro nível (não dentro de Geral).
+Cada aba de opções salva só o seu grupo (`pressao_settings_{aba}`), para não sobrescrever as demais. As listas de **Candidatos** e **Apoiadores** não passam pelo `options.php`: usam tabela com busca/paginação e CRUD via `admin-ajax` (`class-candidatos-admin-list.php`). **Alvos** e **Templates** da API ainda são geridos fora do painel; no futuro entram como abas de primeiro nível (não dentro de Geral).
 
 | Campo | Option WP | Aba | Descrição |
 |-------|-----------|-----|-----------|
@@ -138,11 +139,11 @@ Cada aba de opções salva só o seu grupo (`pressao_settings_{aba}`), para não
 | Intervalo confirmar identidade | `pressao_ativista_confirm_interval` | Geral | Minutos até perguntar de novo (padrão `10`) |
 | Título do formulário | `pressao_ativista_form_title` | Geral | Título do formulário de identificação |
 | Duração da sessão | `pressao_session_duration` | Geral | TTL dos cookies em segundos (padrão `86400`) |
-| Candidatos a pressionar | `pressao_candidatos` | Candidatos | Busca/seleção do `[pressao_fluxo]` |
-| Limite de marcação (fluxo) | `pressao_fluxo_limite_candidatos` | Candidatos | Máximo de @ por mensagem (padrão `5`) |
+| Candidatos a pressionar | `pressao_candidatos` | Candidatos | Lista AJAX (busca/paginação); usada na busca do `[pressao_fluxo]` |
+| Limite de marcação (fluxo) | `pressao_fluxo_limite_candidatos` | Candidatos | Máximo de @ por mensagem (padrão `5`) — salvo pelo botão Salvar da aba |
 | Contador antes de abrir IG | `pressao_fluxo_countdown_abrir` | Candidatos | Se ligado: toast com countdown antes de abrir; se desligado (padrão): abre no clique. Mobile tenta o app; desktop abre nova aba |
 | Ajuda do fluxo | `pressao_fluxo_ajuda` | Candidatos | Título + conteúdo HTML do modal `?` no `[pressao_fluxo]` |
-| Candidatos apoiadores | `pressao_candidatos_apoiadores` | Apoiadores | Botão/lista “já apoiam”, `[pressao_candidatos]`, import CSV |
+| Candidatos apoiadores | `pressao_candidatos_apoiadores` | Apoiadores | Lista AJAX + import/remover CSV; botão/lista “já apoiam”, `[pressao_candidatos]` |
 | Compartilhamento | `pressao_compartilhamento` | Compartilhamento | Textos, links, deep links e imagens do botão de compartilhar |
 
 ### Configuração compartilhada via wp-config.php (multisite)
@@ -168,6 +169,13 @@ Há **duas bases** no WordPress:
 | A pressionar | `pressao_candidatos` | Busca/seleção (Tom Select) no `[pressao_fluxo]` |
 | Apoiadores | `pressao_candidatos_apoiadores` | Botão “já apoiam”, overlay da lista, shortcode `[pressao_candidatos]` |
 
+No admin, as duas listas usam o **mesmo padrão de listagem** (`PressaoPlugin_Candidatos_Admin_List`):
+
+- Tabela com colunas: foto, nome, cargo, partido, Instagram
+- Clique / **Editar** expande o formulário na linha; **Salvar item** grava via AJAX
+- Busca (`cs`) e paginação (`cpage`, 20 por página) no servidor
+- Actions: `pressao_candidato_save`, `pressao_candidato_delete`, `pressao_candidato_add`
+
 Campos por candidato (iguais nas duas):
 
 - `nome`
@@ -183,7 +191,7 @@ No `[pressao_fluxo]`, os handles da base **a pressionar** entram na mensagem (`@
 
 #### Import CSV (apoiadores)
 
-Na página de configurações, abaixo do formulário principal: upload CSV com upsert **incremental** por `@`:
+Na aba **Apoiadores**, abaixo da listagem: upload CSV com upsert **incremental** por `@`:
 
 - Colunas: `nome`, `cargo`, `partido`, `descricao`, `instagram` (ou `link_url`), `imagem_url` (opcional)
 - Botão **Baixar CSV de exemplo** ao lado de Importar CSV (`assets/examples/candidatos-apoiadores-exemplo.csv`)

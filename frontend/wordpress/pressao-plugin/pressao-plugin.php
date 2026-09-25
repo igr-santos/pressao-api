@@ -63,6 +63,7 @@ final class PressaoPlugin {
     private function load_dependencies() {
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-main.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-admin.php';
+        require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-admin-list.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-import.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-api.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-shortcode.php';
@@ -310,10 +311,17 @@ final class PressaoPlugin {
         );
 
         wp_localize_script('pressao-admin', 'pressaoAdminData', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
             'selectCandidateImage' => __('Selecionar imagem do candidato', 'pressao-plugin'),
             'selectShareImage' => __('Selecionar imagem para postar', 'pressao-plugin'),
             'useThisImage' => __('Usar esta imagem', 'pressao-plugin'),
             'removeConfirm' => __('Remover os candidatos selecionados da base de apoiadores?', 'pressao-plugin'),
+            'removeItemConfirm' => __('Remover este candidato da lista?', 'pressao-plugin'),
+            'saveError' => __('Não foi possível salvar o candidato.', 'pressao-plugin'),
+            'deleteError' => __('Não foi possível remover o candidato.', 'pressao-plugin'),
+            'addError' => __('Não foi possível adicionar o candidato.', 'pressao-plugin'),
+            'saving' => __('Salvando…', 'pressao-plugin'),
+            'saved' => __('Salvo.', 'pressao-plugin'),
         ]);
     }
 }

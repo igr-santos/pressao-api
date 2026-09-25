@@ -5,12 +5,143 @@
 }
 
 .pressao-settings-tab-panel {
-	max-width: 960px;
+	max-width: 1100px;
 }
 
 .pressao-settings-tab-panel > form > h2:first-of-type,
 .pressao-settings-tab-panel .form-table + h2 {
 	margin-top: 0.5rem;
+}
+
+.pressao-settings-fluxo-form {
+	margin-top: 2rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid #c3c4c7;
+}
+
+/* Listagem padrão (candidatos / apoiadores) */
+
+.pressao-admin-list {
+	margin: 1rem 0 1.5rem;
+}
+
+.pressao-admin-list-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem 1.25rem;
+	margin-bottom: 0.75rem;
+}
+
+.pressao-admin-list-search {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.pressao-admin-list-count {
+	margin: 0;
+}
+
+.pressao-admin-list-table .column-thumb {
+	width: 56px;
+}
+
+.pressao-admin-list-table .column-actions {
+	width: 140px;
+	white-space: nowrap;
+}
+
+.pressao-admin-list-thumb img {
+	display: block;
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 4px;
+}
+
+.pressao-admin-list-thumb-empty {
+	display: inline-block;
+	width: 40px;
+	text-align: center;
+	color: #646970;
+}
+
+.pressao-admin-list-row {
+	cursor: pointer;
+}
+
+.pressao-admin-list-row.is-expanded {
+	background: #f0f6fc;
+}
+
+.pressao-admin-list-row .column-actions {
+	cursor: default;
+}
+
+.pressao-admin-list-editor td {
+	background: #f6f7f7;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.pressao-admin-list-editor-fields {
+	max-width: 100%;
+}
+
+.pressao-admin-list-editor-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0 1rem;
+	max-width: 640px;
+}
+
+.pressao-admin-list-editor-grid p {
+	margin-top: 0;
+}
+
+.pressao-admin-list-editor-grid input.regular-text,
+.pressao-admin-list-editor-fields textarea.large-text {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+@media screen and (max-width: 782px) {
+	.pressao-admin-list-editor-grid {
+		grid-template-columns: 1fr;
+		max-width: 100%;
+	}
+}
+
+.pressao-admin-list-editor-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 0;
+}
+
+.pressao-admin-list-status {
+	color: #1d2327;
+}
+
+.pressao-admin-list-status.is-error {
+	color: #b32d2e;
+}
+
+.pressao-admin-list-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-top: 1rem;
+}
+
+.pressao-admin-list-pagination {
+	margin: 0.75rem 0 0;
 }
 
 .pressao-apoiadores-tools {
@@ -42,28 +173,120 @@
 	max-width: 480px;
 }
 
-.pressao-usage {
-	max-width: 720px;
+/* Documentação */
+
+.pressao-docs {
+	max-width: 960px;
 }
 
-.pressao-usage-examples {
-	line-height: 1.8;
+.pressao-docs-intro {
+	margin-bottom: 1.5rem;
+}
+
+.pressao-docs-intro h2 {
+	margin-top: 0;
+	margin-bottom: 0.5rem;
+}
+
+.pressao-docs-intro > p {
+	margin: 0 0 0.5rem;
+	max-width: 52rem;
+	line-height: 1.55;
+	font-size: 14px;
+}
+
+.pressao-docs-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+@media screen and (max-width: 960px) {
+	.pressao-docs-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.pressao-docs-card {
+	margin: 0;
+	padding: 1rem 1.15rem;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.pressao-docs-card-title {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.25rem;
+	margin: 0 0 0.6rem;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.pressao-docs-card-title code {
+	display: inline-block;
+	padding: 0.15em 0.45em;
+	font-size: 12px;
+	font-weight: 600;
+	background: #f0f0f1;
+	border-radius: 3px;
+}
+
+.pressao-docs-card-title span {
+	color: #1d2327;
+	font-size: 14px;
+}
+
+.pressao-docs-card-body {
+	margin: 0 0 0.85rem;
+	color: #50575e;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.pressao-docs-example {
+	margin: 0;
+	padding: 0.65rem 0.75rem;
+	overflow-x: auto;
+	background: #f6f7f7;
+	border-radius: 3px;
+	border: 1px solid #dcdcde;
+}
+
+.pressao-docs-example code {
+	font-size: 12px;
+	line-height: 1.45;
+	color: #1d2327;
+	word-break: break-all;
+	white-space: pre-wrap;
 }
 
 .pressao-lgpd-info {
-	margin-top: 1.5rem;
-	padding: 15px;
-	background: #f0f8ff;
-	border-radius: 6px;
-	border-left: 4px solid #0073aa;
+	margin-top: 0.5rem;
+	padding: 1rem 1.15rem;
+	background: #f0f6fc;
+	border-radius: 4px;
+	border: 1px solid #c5d9ed;
+	border-left: 4px solid #2271b1;
 }
 
 .pressao-lgpd-info h3 {
 	margin-top: 0;
+	margin-bottom: 0.4rem;
+	font-size: 14px;
 }
 
 .pressao-lgpd-info p {
 	margin-bottom: 0;
+	max-width: 52rem;
+	color: #1d2327;
+	font-size: 13px;
+	line-height: 1.5;
 }
 
 .pressao-candidato-image-preview img,
