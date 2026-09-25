@@ -1033,6 +1033,9 @@
                 searchField: ['text'],
                 placeholder: selectEl.getAttribute('placeholder') || 'Digite o nome ou @ do Instagram',
                 render: {
+                    no_results: function () {
+                        return '<div class="no-results">Não encontramos resultados para sua busca</div>';
+                    },
                     option: function (data, escape) {
                         var opt = selectEl.querySelector('option[value="' + data.value + '"]');
                         var img = opt ? opt.getAttribute('data-imagem') : '';

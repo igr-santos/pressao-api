@@ -177,7 +177,12 @@
                 maxItems: null,
                 maxOptions: null,
                 placeholder: $removeSelect.attr('placeholder') || 'Digite nome ou @',
-                searchField: ['text']
+                searchField: ['text'],
+                render: {
+                    no_results: function () {
+                        return '<div class="no-results">Não encontramos resultados para sua busca</div>';
+                    }
+                }
             });
         }
 
