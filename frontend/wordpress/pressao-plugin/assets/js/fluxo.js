@@ -606,16 +606,16 @@
             var imagesItems = imagens
                 .map(function (img, index) {
                     return (
-                        '<div class="pressao-fluxo-image-item">' +
+                        '<div class="pressao-fluxo-image-item" data-index="' +
+                        index +
+                        '">' +
                         '<div class="pressao-fluxo-image-thumb-wrap">' +
                         '<span class="pressao-fluxo-image-thumb" style="background-image:url(\'' +
                         escapeAttr(img.thumb || img.url) +
                         '\')"></span>' +
-                        '<a class="pressao-fluxo-image-download" href="' +
-                        escapeAttr(img.url) +
-                        '" download="' +
-                        escapeAttr(img.filename || 'imagem-' + index) +
-                        '" target="_blank" rel="noopener noreferrer">BAIXAR</a>' +
+                        '<button type="button" class="pressao-fluxo-image-download" data-index="' +
+                        index +
+                        '">BAIXAR</button>' +
                         '</div>' +
                         '<span class="pressao-fluxo-image-rotulo">' +
                         escapeHtml(img.rotulo || '') +
@@ -726,6 +726,9 @@
                     mainScr.hidden = true;
                     imagesScr.hidden = false;
                     imagesScr.classList.add('is-entering');
+                    if (window.PressaoShareImages && typeof window.PressaoShareImages.prefetch === 'function') {
+                        window.PressaoShareImages.prefetch(imagens);
+                    }
                 });
             }
             var backImages = mount.querySelector('[data-fluxo-images-back]');
@@ -742,14 +745,29 @@
                 resetBtn.addEventListener('click', resetFluxo);
             }
 
+            function handleFluxoImageAction(index) {
+                if (isNaN(index) || !imagens[index]) {
+                    return;
+                }
+                if (window.PressaoShareImages && typeof window.PressaoShareImages.downloadOrShareOne === 'function') {
+                    window.PressaoShareImages.downloadOrShareOne(imagens[index], index);
+                }
+            }
+
+            mount.querySelectorAll('.pressao-fluxo-image-item').forEach(function (item) {
+                item.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var index = parseInt(item.getAttribute('data-index'), 10);
+                    handleFluxoImageAction(index);
+                });
+            });
+
             var downloadAll = mount.querySelector('[data-fluxo-download-all]');
             if (downloadAll) {
                 downloadAll.addEventListener('click', function () {
-                    mount.querySelectorAll('.pressao-fluxo-image-download').forEach(function (link, i) {
-                        setTimeout(function () {
-                            link.click();
-                        }, i * 150);
-                    });
+                    if (window.PressaoShareImages && typeof window.PressaoShareImages.downloadOrShareAll === 'function') {
+                        window.PressaoShareImages.downloadOrShareAll(imagens);
+                    }
                 });
             }
         }

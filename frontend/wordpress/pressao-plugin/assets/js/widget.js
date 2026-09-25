@@ -1733,16 +1733,34 @@ function abrirTelaImagensCompartilhar(overlay, config) {
         main.hidden = false;
     });
 
-    images.querySelectorAll('.pressao-share-image-download').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const index = parseInt(btn.dataset.index, 10);
-            if (!isNaN(index) && lista[index]) {
-                downloadShareImage(lista[index]);
-            }
+    if (window.PressaoShareImages && typeof window.PressaoShareImages.prefetch === 'function') {
+        window.PressaoShareImages.prefetch(lista);
+    }
+
+    function handleShareImageAction(index) {
+        if (isNaN(index) || !lista[index]) {
+            return;
+        }
+        if (window.PressaoShareImages && typeof window.PressaoShareImages.downloadOrShareOne === 'function') {
+            window.PressaoShareImages.downloadOrShareOne(lista[index], index);
+            return;
+        }
+        downloadShareImage(lista[index]);
+    }
+
+    images.querySelectorAll('.pressao-share-image-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const index = parseInt(item.dataset.index, 10);
+            handleShareImageAction(index);
         });
     });
 
     images.querySelector('.pressao-share-download-all').addEventListener('click', function() {
+        if (window.PressaoShareImages && typeof window.PressaoShareImages.downloadOrShareAll === 'function') {
+            window.PressaoShareImages.downloadOrShareAll(lista);
+            return;
+        }
         lista.forEach(function(img, i) {
             window.setTimeout(function() {
                 downloadShareImage(img);
@@ -1778,7 +1796,9 @@ function downloadShareImage(img) {
             document.body.appendChild(a);
             a.click();
             a.remove();
-            URL.revokeObjectURL(objectUrl);
+            window.setTimeout(function() {
+                URL.revokeObjectURL(objectUrl);
+            }, 2000);
         })
         .catch(function() {
             const a = document.createElement('a');

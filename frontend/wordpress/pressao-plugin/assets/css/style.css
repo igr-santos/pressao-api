@@ -1543,6 +1543,7 @@
     flex-direction: column;
     align-items: center;
     gap: 0.4rem;
+    cursor: pointer;
 }
 
 .pressao-share-image-preview {

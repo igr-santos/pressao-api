@@ -172,11 +172,21 @@ final class PressaoPlugin {
                 wp_add_inline_style('pressao-plugin', $icon_vars);
             }
 
+            if ($has_legacy || $has_fluxo) {
+                wp_enqueue_script(
+                    'pressao-share-images',
+                    PRESSAO_PLUGIN_URL . 'assets/js/share-images.js',
+                    [],
+                    pressao_plugin_asset_version('assets/js/share-images.js'),
+                    true
+                );
+            }
+
             if ($has_legacy) {
                 wp_enqueue_script(
                     'pressao-plugin',
                     PRESSAO_PLUGIN_URL . 'assets/js/widget.js',
-                    [],
+                    ['pressao-share-images'],
                     pressao_plugin_asset_version('assets/js/widget.js'),
                     true
                 );
@@ -224,7 +234,7 @@ final class PressaoPlugin {
                 wp_enqueue_script(
                     'pressao-fluxo',
                     PRESSAO_PLUGIN_URL . 'assets/js/fluxo.js',
-                    ['tom-select'],
+                    ['tom-select', 'pressao-share-images'],
                     pressao_plugin_asset_version('assets/js/fluxo.js'),
                     true
                 );

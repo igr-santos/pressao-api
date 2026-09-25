@@ -92,6 +92,7 @@ pressao-plugin/
 │   ├── examples/               # CSV de exemplo (apoiadores)
 │   └── js/
 │       ├── admin.js            # Campos repetíveis, CSV/remoção apoiadores, Media Library
+│       ├── share-images.js     # Download blob / Web Share das “Imagens para postar”
 │       ├── widget.js           # UI, cookies, ações, compartilhamento e confirmações ([pressao_alvos])
 │       └── fluxo.js            # Wizard sequencial isolado ([pressao_fluxo])
 └── views/
@@ -205,6 +206,13 @@ Campos principais da option `pressao_compartilhamento`:
 
 Não cria ação na API. Ao copiar o link ou abrir WhatsApp/Instagram/Messenger, grava a chave sintética `__compartilhar` no cookie `pressao_acoes_realizadas` para o estado “já realizei”. Essa chave **não** entra no `done/total` de `[pressao_progresso]`. Depois de realizado, a linha mostra só o check verde e continua clicável para reabrir o overlay na mesma sessão.
 
+**Imagens para postar** (overlay e tela do `[pressao_fluxo]`): helper compartilhado `share-images.js` (`window.PressaoShareImages`), dependência de `widget.js` e `fluxo.js`.
+
+- **Desktop:** `fetch` → blob → download forçado (`<a download>` com revoke atrasado).
+- **Mobile** (UA mobile + `navigator.canShare({ files })`): abre a folha nativa de compartilhar com o arquivo da imagem.
+- Prefetch dos blobs ao abrir a tela; clique na imagem ou em “Baixar todas as imagens”.
+- Download/share de imagem **não** marca `__compartilhar`.
+
 ### Debug
 
 Para ativar o debug, no `wp-config.php`:
@@ -241,7 +249,7 @@ nome do perfil a comentar e `contato` é a **URL da postagem/vídeo**. O overlay
 abre esse link; a confirmação segue via `PATCH /api/v1/acoes/{id}/confirmar`.
 
 **Compartilhamento:** item editorial no fim da lista (configurado no admin). Overlay com copiar link,
-deep links WhatsApp/Instagram/Messenger e download de imagens. Sem `POST /acoes`.
+deep links WhatsApp/Instagram/Messenger e download/share de imagens (`share-images.js`). Sem `POST /acoes`.
 
 ```text
 [pressao_alvos campaign="uuid" show_ativista_form="yes" show_template="yes" cache="0" action_label="Pressionar por E-mail" ordem="instagram,tiktok,email" tempo_instagram="2 min" tempo_tiktok="2 min" tempo_email="1 min"]
@@ -333,7 +341,7 @@ Wizard isolado de `[pressao_alvos]`: seleção de candidatos → copiar/abrir In
 | `cache` | `300` | TTL do cache de alvos |
 | `class` / `id` | — / gerado | Classe CSS extra e ID do container |
 
-Assets: `fluxo.js` + `fluxo.css` + Tom Select (só quando o shortcode está na página). Reusa AJAX `pressao_realizar_acao` / `pressao_confirmar_acao`.
+Assets: `fluxo.js` + `fluxo.css` + `share-images.js` + Tom Select (só quando o shortcode está na página). Reusa AJAX `pressao_realizar_acao` / `pressao_confirmar_acao`.
 
 ### `[pressao_widget]` — widget principal
 
