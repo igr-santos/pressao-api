@@ -1044,9 +1044,11 @@
                             ? '<span class="pressao-fluxo-ts-avatar" style="background-image:url(\'' +
                               escape(img) +
                               '\')"></span>'
-                            : '<span class="pressao-fluxo-ts-avatar is-empty"></span>';
+                            : '';
                         return (
-                            '<div class="pressao-fluxo-ts-option">' +
+                            '<div class="pressao-fluxo-ts-option' +
+                            (img ? '' : ' is-text-only') +
+                            '">' +
                             avatar +
                             '<span>' +
                             escape(data.text) +
@@ -1062,9 +1064,11 @@
                             ? '<span class="pressao-fluxo-ts-avatar" style="background-image:url(\'' +
                               escape(img) +
                               '\')"></span>'
-                            : '<span class="pressao-fluxo-ts-avatar is-empty"></span>';
+                            : '';
                         return (
-                            '<div class="pressao-fluxo-ts-item">' +
+                            '<div class="pressao-fluxo-ts-item' +
+                            (img ? '' : ' is-text-only') +
+                            '">' +
                             avatar +
                             '<span>' +
                             escape(handle) +
