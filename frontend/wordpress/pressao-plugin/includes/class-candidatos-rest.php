@@ -194,6 +194,9 @@ class PressaoPlugin_Candidatos_Rest {
 
         $map[$handle] = $record;
         update_option(PressaoPlugin_Candidatos_Import::OPTION, array_values($map), false);
+        if ($imagem_id !== absint($existing['imagem_id'] ?? 0)) {
+            PressaoPlugin_Apoiadores_Imagens_Fila::descartar($handle);
+        }
 
         $response = [
             'action' => $is_new ? 'created' : 'updated',

@@ -66,6 +66,7 @@ final class PressaoPlugin {
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-filtros.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-admin-list.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-import.php';
+        require_once PRESSAO_PLUGIN_DIR . 'includes/class-apoiadores-imagens-fila.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-rest.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-api.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-shortcode.php';
@@ -335,6 +336,13 @@ final class PressaoPlugin {
             'addError' => __('Não foi possível adicionar o candidato.', 'pressao-plugin'),
             'saving' => __('Salvando…', 'pressao-plugin'),
             'saved' => __('Salvo.', 'pressao-plugin'),
+            'filaContagem' => __('%1$d de %2$d imagens', 'pressao-plugin'),
+            'filaProcessando' => __('Baixando imagens…', 'pressao-plugin'),
+            'filaOcupado' => __('Outra aba está processando as imagens; acompanhando o progresso…', 'pressao-plugin'),
+            'filaConcluida' => __('Imagens concluídas. Atualizando a lista…', 'pressao-plugin'),
+            'filaConcluidaErros' => __('Processamento terminado com erros. Corrija a URL no CSV ou tente novamente.', 'pressao-plugin'),
+            'filaFalhaRede' => __('A conexão falhou algumas vezes seguidas. Clique em Continuar para retomar.', 'pressao-plugin'),
+            'filaSaindo' => __('Ainda há imagens na fila. Se sair, o processamento continua quando você voltar à aba Apoiadores.', 'pressao-plugin'),
         ]);
     }
 }

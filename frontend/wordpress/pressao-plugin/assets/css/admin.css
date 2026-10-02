@@ -157,6 +157,30 @@
 	margin-bottom: 1.25rem;
 }
 
+.pressao-imagens-fila-barra {
+	display: block;
+	width: 100%;
+	max-width: 480px;
+	height: 16px;
+	accent-color: #2271b1;
+}
+
+.pressao-imagens-fila-contagem {
+	margin: 0.5rem 0 0;
+	font-weight: 600;
+}
+
+.pressao-imagens-fila-estado {
+	margin: 0.25rem 0 0;
+	color: #50575e;
+}
+
+.pressao-imagens-fila-erros ul {
+	margin: 0.25rem 0 0 1.25rem;
+	list-style: disc;
+	color: #b32d2e;
+}
+
 .pressao-admin-card h3 {
 	margin-top: 0;
 }

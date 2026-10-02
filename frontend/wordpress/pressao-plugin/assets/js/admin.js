@@ -295,6 +295,144 @@
         $field.find('.pressao-share-imagem-preview').empty();
     });
 
+    function initImagensFila() {
+        const $card = $('.pressao-imagens-fila');
+        if (!$card.length) {
+            return;
+        }
+
+        const L = labels();
+        const nonce = $card.attr('data-nonce');
+        const $barra = $card.find('.pressao-imagens-fila-barra');
+        const $contagem = $card.find('.pressao-imagens-fila-contagem');
+        const $estado = $card.find('.pressao-imagens-fila-estado');
+        const $erros = $card.find('.pressao-imagens-fila-erros');
+        const $continuar = $card.find('.pressao-imagens-fila-continuar');
+        const MAX_FALHAS = 3;
+
+        let status = {};
+        try {
+            status = JSON.parse($card.attr('data-status') || '{}');
+        } catch (e) {
+            status = {};
+        }
+        let ultimoTotal = status.total || 0;
+        let falhas = 0;
+        let rodando = false;
+        let processouAlgo = false;
+
+        function render(data) {
+            status = data;
+            if (data.total) {
+                ultimoTotal = data.total;
+            }
+            const total = ultimoTotal || 0;
+            const feitas = data.total ? data.concluidas : total - (data.erros || []).length;
+            $barra.attr('max', Math.max(1, total)).val(feitas);
+            $contagem.text(
+                (L.filaContagem || '%1$d de %2$d imagens')
+                    .replace('%1$d', feitas)
+                    .replace('%2$d', total)
+            );
+
+            const erros = data.erros || [];
+            const $lista = $erros.find('ul').empty();
+            erros.forEach(function(item) {
+                $('<li>')
+                    .append($('<strong>').text(item.handle))
+                    .append(document.createTextNode(' — ' + (item.erro || '')))
+                    .appendTo($lista);
+            });
+            $erros.prop('hidden', !erros.length);
+        }
+
+        function concluir() {
+            rodando = false;
+            const comErros = (status.erros || []).length > 0;
+            $estado.text(comErros ? (L.filaConcluidaErros || '') : (L.filaConcluida || ''));
+            if (processouAlgo) {
+                setTimeout(function() {
+                    window.location.reload();
+                }, comErros ? 3000 : 1500);
+            }
+        }
+
+        function processar() {
+            rodando = true;
+            $continuar.prop('hidden', true);
+            $estado.text(L.filaProcessando || '');
+            $.post(ajaxUrl(), {
+                action: 'pressao_apoiadores_imagens_processar',
+                nonce: nonce
+            }).done(function(resp) {
+                if (!resp || !resp.success) {
+                    falhou();
+                    return;
+                }
+                falhas = 0;
+                const data = resp.data || {};
+                if (data.processadas) {
+                    processouAlgo = true;
+                }
+                render(data);
+                if (data.ocupado) {
+                    $estado.text(L.filaOcupado || '');
+                    setTimeout(processar, 5000);
+                } else if (data.pendentes > 0) {
+                    processar();
+                } else {
+                    concluir();
+                }
+            }).fail(falhou);
+        }
+
+        function falhou() {
+            falhas++;
+            if (falhas >= MAX_FALHAS) {
+                rodando = false;
+                $estado.text(L.filaFalhaRede || '');
+                $continuar.prop('hidden', false);
+                return;
+            }
+            setTimeout(processar, 3000);
+        }
+
+        $continuar.on('click', function() {
+            falhas = 0;
+            processar();
+        });
+
+        $card.on('click', '.pressao-imagens-fila-retentar', function() {
+            const $btn = $(this).prop('disabled', true);
+            $.post(ajaxUrl(), {
+                action: 'pressao_apoiadores_imagens_retentar',
+                nonce: nonce
+            }).done(function(resp) {
+                if (resp && resp.success) {
+                    render(resp.data || {});
+                    processar();
+                }
+            }).always(function() {
+                $btn.prop('disabled', false);
+            });
+        });
+
+        window.addEventListener('beforeunload', function(e) {
+            if (rodando && status.pendentes > 0) {
+                e.preventDefault();
+                e.returnValue = L.filaSaindo || '';
+                return e.returnValue;
+            }
+        });
+
+        render(status);
+        if (status.pendentes > 0) {
+            processar();
+        } else if ((status.erros || []).length) {
+            $estado.text(L.filaConcluidaErros || '');
+        }
+    }
+
     $(function() {
         const $removeSelect = $('#pressao-apoiadores-remove-select');
         if ($removeSelect.length && typeof TomSelect !== 'undefined') {
@@ -311,6 +449,8 @@
                 }
             });
         }
+
+        initImagensFila();
 
         $('.pressao-apoiadores-remove-form').on('submit', function(e) {
             const L = labels();

@@ -152,7 +152,7 @@ class PressaoPlugin_Candidatos_Import {
         $map = self::index_by_handle(self::get_apoiadores());
         $added = 0;
         $updated = 0;
-        $images_ok = 0;
+        $jobs = [];
         $errors = [];
         $row_num = 1;
 
@@ -196,18 +196,11 @@ class PressaoPlugin_Candidatos_Import {
             }
 
             if ($imagem_url !== '') {
-                $sideload = self::sideload_image($imagem_url, $nome !== '' ? $nome : $handle);
-                if (is_wp_error($sideload)) {
-                    $errors[] = sprintf(
-                        /* translators: 1: row number, 2: error message */
-                        __('Linha %1$d: imagem — %2$s', 'pressao-plugin'),
-                        $row_num,
-                        $sideload->get_error_message()
-                    );
-                } else {
-                    $imagem_id = (int) $sideload;
-                    $images_ok++;
-                }
+                // Download fica para a fila (lotes via AJAX): no request do upload estourava o timeout do gateway.
+                $jobs[$handle] = [
+                    'url' => $imagem_url,
+                    'titulo' => $nome !== '' ? $nome : $handle,
+                ];
             }
 
             $map[$handle] = [
@@ -229,14 +222,21 @@ class PressaoPlugin_Candidatos_Import {
         fclose($handle_file);
 
         update_option(self::OPTION, array_values($map), false);
+        PressaoPlugin_Apoiadores_Imagens_Fila::enfileirar($jobs);
 
         $summary = sprintf(
-            /* translators: 1: added count, 2: updated count, 3: images ok */
-            __('Import concluído: %1$d adicionados, %2$d atualizados, %3$d imagens ok.', 'pressao-plugin'),
+            /* translators: 1: added count, 2: updated count */
+            __('Import concluído: %1$d adicionados, %2$d atualizados.', 'pressao-plugin'),
             $added,
-            $updated,
-            $images_ok
+            $updated
         );
+        if (!empty($jobs)) {
+            $summary .= ' ' . sprintf(
+                /* translators: %d: queued images */
+                __('%d imagens na fila — acompanhe o progresso abaixo.', 'pressao-plugin'),
+                count($jobs)
+            );
+        }
 
         if (!empty($errors)) {
             $max = 8;

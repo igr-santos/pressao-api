@@ -229,8 +229,12 @@ class PressaoPlugin_Candidatos_Admin_List {
             ? wp_unslash($_POST['candidato'])
             : [];
         $item = self::sanitize_item($raw);
+        $imagem_anterior = absint($items[$index]['imagem_id'] ?? 0);
         $items[$index] = $item;
         update_option($option, array_values($items), false);
+        if ($option === self::OPTION_APOIADORES && $item['link_url'] !== '' && $item['imagem_id'] !== $imagem_anterior) {
+            PressaoPlugin_Apoiadores_Imagens_Fila::descartar($item['link_url']);
+        }
 
         $thumb = '';
         if (!empty($item['imagem_id'])) {

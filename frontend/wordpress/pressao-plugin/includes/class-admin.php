@@ -380,6 +380,7 @@ class PressaoPlugin_Admin {
                 <?php elseif ($current_tab === 'apoiadores') : ?>
                     <h2><?php esc_html_e('Candidatos apoiadores', 'pressao-plugin'); ?></h2>
                     <p><?php esc_html_e('Base dos que já apoiam a pauta: botão/lista do [pressao_fluxo] e shortcode [pressao_candidatos]. Use as ferramentas abaixo para importar CSV ou remover da base.', 'pressao-plugin'); ?></p>
+                    <?php PressaoPlugin_Apoiadores_Imagens_Fila::render_admin_card(); ?>
                     <?php PressaoPlugin_Candidatos_Admin_List::render(PressaoPlugin_Candidatos_Admin_List::OPTION_APOIADORES); ?>
                     <?php $this->render_apoiadores_tools(); ?>
                 <?php elseif ($current_tab === 'candidatos') : ?>
@@ -573,7 +574,7 @@ class PressaoPlugin_Admin {
             <div class="pressao-admin-card">
                 <h3><?php esc_html_e('Importar CSV (incremental)', 'pressao-plugin'); ?></h3>
                 <p class="description">
-                    <?php esc_html_e('Colunas: nome, cargo, partido, descricao, instagram (ou link_url), imagem_url (opcional). Novos @ são adicionados; @ existentes são atualizados; quem não está no CSV permanece. Imagens públicas são baixadas para uploads/candidatos/.', 'pressao-plugin'); ?>
+                    <?php esc_html_e('Colunas: nome, cargo, partido, descricao, instagram (ou link_url), imagem_url (opcional). Novos @ são adicionados; @ existentes são atualizados; quem não está no CSV permanece. Os candidatos são salvos na hora; as imagens públicas são baixadas depois, em lotes, para uploads/candidatos/ (acompanhe o progresso no topo desta aba).', 'pressao-plugin'); ?>
                 </p>
                 <form method="post"
                       action="<?php echo esc_url(admin_url('admin-post.php')); ?>"

@@ -78,6 +78,7 @@ pressao-plugin/
 │   ├── class-candidatos-filtros.php     # Índice estado → cargos do “Filtre por estado” (fluxo)
 │   ├── class-candidatos-admin-list.php  # Tabela/expand/busca/paginação + AJAX
 │   ├── class-candidatos-import.php  # CSV apoiadores + remoção
+│   ├── class-apoiadores-imagens-fila.php  # Fila de imagens do CSV (lotes via AJAX + progresso)
 │   ├── class-candidatos-rest.php    # REST pressao/v1/candidatos-apoiadores
 │   ├── class-api.php           # Cliente HTTP: Keycloak + API Pressão
 │   ├── class-shortcode.php     # Shortcodes e renderização SSR
@@ -210,7 +211,17 @@ Na aba **Apoiadores**, abaixo da listagem: upload CSV com upsert **incremental**
 - Colunas: `nome`, `cargo`, `partido`, `descricao`, `instagram` (ou `link_url`), `imagem_url` (opcional)
 - Botão **Baixar CSV de exemplo** ao lado de Importar CSV (`assets/examples/candidatos-apoiadores-exemplo.csv`)
 - `@` novo → adiciona; `@` existente → atualiza; ausente no CSV → permanece
-- `imagem_url` http(s) → download + sideload em `uploads/…/candidatos/`; falha de imagem não aborta o lote
+- Os candidatos (campos de texto) são **salvos na hora**; o request do upload não baixa imagens
+- `imagem_url` http(s) → entra na **fila de imagens** (`pressao_apoiadores_imagens_fila`, um item por `@`; `@` repetido no CSV: a última linha vence)
+
+**Fila de imagens** (`PressaoPlugin_Apoiadores_Imagens_Fila`): baixar + gerar tamanhos + enviar ao S3 no request do upload estourava o timeout do gateway (504) e nada era salvo. Agora:
+
+- No topo da aba **Apoiadores**, o card **Imagens do import** mostra barra de progresso, contagem e erros. O `admin.js` chama `pressao_apoiadores_imagens_processar` em sequência; cada chamada processa imagens por **orçamento de ~10 s** (mínimo 1; só inicia outra se, pela duração da última, ainda couber) e grava o progresso após cada imagem.
+- A foto aparece no candidato assim que o item termina (`download_url` + `media_handle_sideload` em `uploads/…/candidatos/`); a imagem anterior permanece na Media Library.
+- Saiu da página: a fila continua salva e o processamento retoma ao abrir a aba de novo. Duas abas: lock atômico (`pressao_apoiadores_imagens_lock`, 120 s) — só uma processa, a outra acompanha.
+- Falha: até **2 tentativas**; depois o item fica listado com o erro e o botão **Tentar novamente** (`pressao_apoiadores_imagens_retentar`) recoloca na fila.
+- Reimport com fila pendente substitui o item do mesmo `@`. Imagem definida manualmente (Salvar item) ou via REST descarta o item pendente daquele `@`.
+- Fila e lock são por site (multisite).
 
 Para bases grandes (~milhares de linhas), prefira a [API REST](#api-rest-apoiadores) (um registro por request, debug por linha).
 
@@ -495,6 +506,14 @@ Todos registrados nas variantes logada e `nopriv`:
 | `pressao_get_acoes_status` | — | Nenhum: lê o estado do cookie `pressao_acoes_realizadas` |
 
 `pressao_realizar_acao` e `pressao_confirmar_acao` invalidam o transient do contador (`invalidar_cache_contador`) quando recebem `campanha_id` no POST.
+
+Handlers só do admin (logado, `manage_options` + nonce `pressao_apoiadores_imagens`; sem `nopriv`):
+
+| Action | Faz |
+|--------|-----|
+| `pressao_apoiadores_imagens_processar` | Processa um lote da fila de imagens do import e devolve o status (`ocupado` se outra aba tem o lock) |
+| `pressao_apoiadores_imagens_status` | Só devolve o status (`total`, `concluidas`, `pendentes`, `erros`) |
+| `pressao_apoiadores_imagens_retentar` | Recoloca os itens com erro na fila |
 
 ## 📏 Regras de manutenção
 
