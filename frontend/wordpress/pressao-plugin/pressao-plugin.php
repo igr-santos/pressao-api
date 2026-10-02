@@ -69,7 +69,9 @@ final class PressaoPlugin {
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-apoiadores-imagens-fila.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-rest.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-api.php';
+        require_once PRESSAO_PLUGIN_DIR . 'includes/class-render-helpers.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-shortcode.php';
+        require_once PRESSAO_PLUGIN_DIR . 'includes/class-multicanal.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-ajax.php'; // NOVO
     }
     
@@ -149,9 +151,11 @@ final class PressaoPlugin {
                          has_shortcode($content, 'pressao_contador') ||
                          has_shortcode($content, 'pressao_progresso') ||
                          has_shortcode($content, 'pressao_candidatos') ||
-                         has_shortcode($content, 'pressao_fluxo');
+                         has_shortcode($content, 'pressao_fluxo') ||
+                         has_shortcode($content, 'pressao_multicanal');
 
         $has_fluxo = has_shortcode($content, 'pressao_fluxo');
+        $has_multicanal = has_shortcode($content, 'pressao_multicanal');
         $has_legacy = has_shortcode($content, 'pressao_widget') ||
                       has_shortcode($content, 'pressao_form') ||
                       has_shortcode($content, 'pressao_list') ||
@@ -162,10 +166,7 @@ final class PressaoPlugin {
         
         if ($has_shortcode) {
             $icons_url = PRESSAO_PLUGIN_URL . 'assets/icons/';
-            $icon_vars = sprintf(
-                ':root{--pressao-icon-instagram:url("%1$sinstagram.svg");--pressao-icon-tiktok:url("%1$stiktok.svg");--pressao-icon-email:url("%1$semail.svg");--pressao-icon-seta:url("%1$sseta.svg");--pressao-icon-seta-direita:url("%1$sseta-direita.svg");--pressao-icon-abrir-externo:url("%1$sabrir-externo.svg");--pressao-icon-check-circulo:url("%1$scheck-circulo.svg");--pressao-icon-raio:url("%1$sraio-barra-progresso.svg");--pressao-icon-compartilhar:url("%1$scompartilhar.svg");--pressao-icon-copiar:url("%1$scopiar.svg");--pressao-icon-download:url("%1$sdownload.svg");--pressao-icon-whatsapp:url("%1$swhatsapp.svg");--pressao-icon-messenger:url("%1$smessenger.svg");--pressao-icon-seta-circulo:url("%1$sseta-com-circulo.svg");}',
-                esc_url_raw($icons_url)
-            );
+            $icon_vars = $this->get_icon_vars_css($icons_url);
 
             if ($has_legacy || $has_fluxo) {
                 wp_enqueue_style(
@@ -177,7 +178,17 @@ final class PressaoPlugin {
                 wp_add_inline_style('pressao-plugin', $icon_vars);
             }
 
-            if ($has_legacy || $has_fluxo) {
+            if ($has_fluxo || $has_multicanal) {
+                wp_enqueue_style(
+                    'pressao-ui',
+                    PRESSAO_PLUGIN_URL . 'assets/css/pressao-ui.css',
+                    [],
+                    pressao_plugin_asset_version('assets/css/pressao-ui.css')
+                );
+                wp_add_inline_style('pressao-ui', $icon_vars);
+            }
+
+            if ($has_legacy || $has_fluxo || $has_multicanal) {
                 wp_enqueue_script(
                     'pressao-share-images',
                     PRESSAO_PLUGIN_URL . 'assets/js/share-images.js',
@@ -185,6 +196,10 @@ final class PressaoPlugin {
                     pressao_plugin_asset_version('assets/js/share-images.js'),
                     true
                 );
+            }
+
+            if ($has_fluxo || $has_multicanal) {
+                $this->enqueue_core_script();
             }
 
             if ($has_legacy) {
@@ -226,7 +241,7 @@ final class PressaoPlugin {
                 wp_enqueue_style(
                     'pressao-fluxo',
                     PRESSAO_PLUGIN_URL . 'assets/css/fluxo.css',
-                    ['tom-select', 'pressao-plugin'],
+                    ['tom-select', 'pressao-plugin', 'pressao-ui'],
                     pressao_plugin_asset_version('assets/css/fluxo.css')
                 );
                 wp_enqueue_script(
@@ -239,7 +254,7 @@ final class PressaoPlugin {
                 wp_enqueue_script(
                     'pressao-fluxo',
                     PRESSAO_PLUGIN_URL . 'assets/js/fluxo.js',
-                    ['tom-select', 'pressao-share-images'],
+                    ['tom-select', 'pressao-share-images', 'pressao-core'],
                     pressao_plugin_asset_version('assets/js/fluxo.js'),
                     true
                 );
@@ -250,7 +265,82 @@ final class PressaoPlugin {
                     'iconsUrl' => $icons_url,
                 ]);
             }
+
+            if ($has_multicanal) {
+                wp_enqueue_style(
+                    'pressao-multicanal',
+                    PRESSAO_PLUGIN_URL . 'assets/css/multicanal.css',
+                    ['pressao-ui'],
+                    pressao_plugin_asset_version('assets/css/multicanal.css')
+                );
+                wp_enqueue_script(
+                    'pressao-multicanal',
+                    PRESSAO_PLUGIN_URL . 'assets/js/multicanal.js',
+                    ['pressao-core', 'pressao-share-images'],
+                    pressao_plugin_asset_version('assets/js/multicanal.js'),
+                    true
+                );
+            }
         }
+    }
+
+    /**
+     * Variáveis CSS --pressao-icon-* com URL absoluta (inline em style.css e pressao-ui.css).
+     */
+    private function get_icon_vars_css($icons_url) {
+        $icons = [
+            'instagram' => 'instagram',
+            'tiktok' => 'tiktok',
+            'email' => 'email',
+            'x' => 'x',
+            'seta' => 'seta',
+            'seta-direita' => 'seta-direita',
+            'seta-diagonal' => 'seta-diagonal',
+            'seta-circulo' => 'seta-com-circulo',
+            'seta-circulo-contorno' => 'seta-circulo-contorno',
+            'seta-circulo-cheia' => 'seta-circulo-cheia',
+            'abrir-externo' => 'abrir-externo',
+            'check' => 'check',
+            'check-circulo' => 'check-circulo',
+            'raio' => 'raio-barra-progresso',
+            'compartilhar' => 'compartilhar',
+            'enviar' => 'enviar',
+            'copiar' => 'copiar',
+            'download' => 'download',
+            'whatsapp' => 'whatsapp',
+            'messenger' => 'messenger',
+            'localizacao' => 'localizacao',
+            'interrogacao' => 'interrogacao',
+            'fechar' => 'fechar',
+            'chevron' => 'chevron',
+        ];
+        $base = esc_url_raw($icons_url);
+        $css = ':root{';
+        foreach ($icons as $var => $file) {
+            $css .= '--pressao-icon-' . $var . ':url("' . $base . $file . '.svg");';
+        }
+        return $css . '}';
+    }
+
+    /**
+     * Módulo comum (window.PressaoCore) dos widgets [pressao_fluxo] e [pressao_multicanal].
+     */
+    private function enqueue_core_script() {
+        if (wp_script_is('pressao-core', 'enqueued')) {
+            return;
+        }
+        wp_enqueue_script(
+            'pressao-core',
+            PRESSAO_PLUGIN_URL . 'assets/js/pressao-core.js',
+            [],
+            pressao_plugin_asset_version('assets/js/pressao-core.js'),
+            true
+        );
+        wp_localize_script('pressao-core', 'pressaoCoreData', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('pressao_acao_nonce'),
+            'sessionDuration' => get_option('pressao_session_duration', '86400'),
+        ]);
     }
 
     /**

@@ -224,7 +224,7 @@ class PressaoPlugin_Ajax {
         // Busca ações realizadas (local ou DB)
         $acoes = [];
         foreach ($alvos as $alvo_id) {
-            $acoes[$alvo_id] = $this->get_alvo_action_state($alvo_id);
+            $acoes[$alvo_id] = PressaoPlugin_Render_Helpers::acao_state($alvo_id);
         }
         
         wp_send_json_success($acoes);

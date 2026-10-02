@@ -454,8 +454,7 @@ class PressaoPlugin_Shortcode {
      * Verifica se o usuário já fez ação para um alvo
      */
     private function get_alvo_action_state($alvo_id) {
-        $actions = $this->get_acoes_from_cookie();
-        return isset($actions[$alvo_id]) ? $actions[$alvo_id] : false;
+        return PressaoPlugin_Render_Helpers::acao_state($alvo_id);
     }
 
     /**
@@ -536,74 +535,7 @@ class PressaoPlugin_Shortcode {
      * Config pública de compartilhamento para SSR/JS, ou null se inativo/incompleto.
      */
     private function get_compartilhamento_config_for_render($require_ativo = true) {
-        $config = get_option('pressao_compartilhamento', []);
-        if (!is_array($config)) {
-            return null;
-        }
-        if ($require_ativo && empty($config['ativo'])) {
-            return null;
-        }
-
-        $link = isset($config['link']) ? trim((string) $config['link']) : '';
-        $mensagem = isset($config['mensagem']) ? trim((string) $config['mensagem']) : '';
-        if ($require_ativo && $link === '' && $mensagem === '') {
-            return null;
-        }
-
-        $whatsapp_url = isset($config['whatsapp_url']) ? trim((string) $config['whatsapp_url']) : '';
-        if ($whatsapp_url === '' && $mensagem !== '') {
-            $whatsapp_url = 'https://wa.me/?text=' . rawurlencode($mensagem);
-        }
-
-        $imagens = [];
-        if (!empty($config['imagens']) && is_array($config['imagens'])) {
-            foreach ($config['imagens'] as $imagem) {
-                if (!is_array($imagem)) {
-                    continue;
-                }
-                $imagem_id = absint($imagem['imagem_id'] ?? 0);
-                if (!$imagem_id) {
-                    continue;
-                }
-                $url = wp_get_attachment_url($imagem_id);
-                $thumb = wp_get_attachment_image_url($imagem_id, 'medium');
-                if (!$url) {
-                    continue;
-                }
-                $imagens[] = [
-                    'rotulo' => sanitize_text_field($imagem['rotulo'] ?? ''),
-                    'url' => $url,
-                    'thumb' => $thumb ? $thumb : $url,
-                    'filename' => basename(parse_url($url, PHP_URL_PATH) ?: ('imagem-' . $imagem_id)),
-                ];
-            }
-        }
-
-        return [
-            'titulo' => !empty($config['titulo'])
-                ? $config['titulo']
-                : __('Compartilhar ação', 'pressao-plugin'),
-            'subtitulo' => $config['subtitulo'] ?? '',
-            'tempo' => $config['tempo'] ?? '',
-            'overlay_titulo' => !empty($config['overlay_titulo'])
-                ? $config['overlay_titulo']
-                : __('Compartilhe e aumente o seu impacto', 'pressao-plugin'),
-            'link' => $link,
-            'mensagem' => $mensagem,
-            'whatsapp_url' => $whatsapp_url,
-            'instagram_url' => $config['instagram_url'] ?? '',
-            'messenger_url' => $config['messenger_url'] ?? '',
-            'imagens_titulo' => !empty($config['imagens_titulo'])
-                ? $config['imagens_titulo']
-                : __('Imagens para postar', 'pressao-plugin'),
-            'imagens_subtitulo' => !empty($config['imagens_subtitulo'])
-                ? $config['imagens_subtitulo']
-                : __('baixe imagens prontas para postar nas redes', 'pressao-plugin'),
-            'imagens_instrucao' => !empty($config['imagens_instrucao'])
-                ? $config['imagens_instrucao']
-                : __('Utilize nossas imagens nas suas redes para que outras pessoas conheçam a campanha:', 'pressao-plugin'),
-            'imagens' => $imagens,
-        ];
+        return PressaoPlugin_Render_Helpers::compartilhamento_config($require_ativo);
     }
 
     /**
@@ -611,11 +543,7 @@ class PressaoPlugin_Shortcode {
      * Pendentes (AGUARDANDO_ACAO_HUMANA) ainda não entram no progresso.
      */
     private function is_acao_realizada($action_state) {
-        if (!is_array($action_state)) {
-            return false;
-        }
-        $status = $action_state['status'] ?? 'CONCLUIDA';
-        return $status !== 'AGUARDANDO_ACAO_HUMANA';
+        return PressaoPlugin_Render_Helpers::is_acao_realizada($action_state);
     }
 
     /**
@@ -840,11 +768,7 @@ class PressaoPlugin_Shortcode {
      * Lê o mapa de ações realizadas do cookie do navegador.
      */
     private function get_acoes_from_cookie() {
-        if (!isset($_COOKIE['pressao_acoes_realizadas'])) {
-            return [];
-        }
-        $actions = json_decode(stripslashes($_COOKIE['pressao_acoes_realizadas']), true);
-        return is_array($actions) ? $actions : [];
+        return PressaoPlugin_Render_Helpers::acoes_cookie();
     }
 
     /**
@@ -938,41 +862,25 @@ class PressaoPlugin_Shortcode {
             $limite = 5;
         }
 
-        $ajuda = get_option('pressao_fluxo_ajuda', []);
-        if (!is_array($ajuda)) {
-            $ajuda = [];
-        }
-        $ajuda_titulo = !empty($ajuda['titulo'])
-            ? $ajuda['titulo']
-            : __('Ajuda', 'pressao-plugin');
-        $ajuda_conteudo = isset($ajuda['conteudo']) ? (string) $ajuda['conteudo'] : '';
+        $ajuda = PressaoPlugin_Render_Helpers::ajuda_config();
+        $ajuda_titulo = $ajuda['titulo'];
+        $ajuda_conteudo = $ajuda['conteudo'];
         $alvo_nome = isset($alvo['nome']) ? (string) $alvo['nome'] : '';
 
         $candidatos_raw = get_option('pressao_candidatos', []);
-        $candidatos = $this->normalize_candidatos_for_fluxo($candidatos_raw, 'c');
+        $candidatos = PressaoPlugin_Render_Helpers::normalize_candidatos($candidatos_raw, 'c');
 
         $apoiadores_raw = get_option('pressao_candidatos_apoiadores', []);
-        $apoiadores = $this->normalize_candidatos_for_fluxo($apoiadores_raw, 'a');
+        $apoiadores = PressaoPlugin_Render_Helpers::normalize_candidatos($apoiadores_raw, 'a');
 
         $filtros_index = PressaoPlugin_Candidatos_Filtros::get_index();
         $filtros_estados = isset($filtros_index['estados']) && is_array($filtros_index['estados'])
             ? $filtros_index['estados']
             : [];
 
-        $share_config = $this->get_compartilhamento_config_for_render(false);
+        $share_config = PressaoPlugin_Render_Helpers::compartilhamento_config(false);
         if (!$share_config) {
-            $share_config = [
-                'overlay_titulo' => __('Convide mais pessoas', 'pressao-plugin'),
-                'link' => '',
-                'mensagem' => '',
-                'whatsapp_url' => '',
-                'instagram_url' => '',
-                'messenger_url' => '',
-                'imagens_titulo' => __('Imagens para postar', 'pressao-plugin'),
-                'imagens_subtitulo' => __('baixe imagens prontas para postar nas redes', 'pressao-plugin'),
-                'imagens_instrucao' => '',
-                'imagens' => [],
-            ];
+            $share_config = PressaoPlugin_Render_Helpers::compartilhamento_padrao();
         }
 
         $config = [
@@ -994,17 +902,7 @@ class PressaoPlugin_Shortcode {
         ];
 
         $total_candidatos = count($apoiadores);
-        $max_avatars = 5;
-        $com_imagem = [];
-        $sem_imagem = [];
-        foreach ($apoiadores as $candidato) {
-            if (!empty($candidato['imagem'])) {
-                $com_imagem[] = $candidato;
-            } else {
-                $sem_imagem[] = $candidato;
-            }
-        }
-        $avatares = array_slice(array_merge($com_imagem, $sem_imagem), 0, $max_avatars);
+        $avatares = PressaoPlugin_Render_Helpers::avatares_destaque($apoiadores, 5);
 
         ob_start();
         ?>
@@ -1030,9 +928,7 @@ class PressaoPlugin_Shortcode {
                         <div class="pressao-fluxo-proof">
                             <button type="button" class="pressao-fluxo-candidatos-btn" data-fluxo-open-lista>
                                 <span class="pressao-fluxo-avatars" aria-hidden="true">
-                                    <?php foreach ($avatares as $avatar) : ?>
-                                        <span class="pressao-fluxo-avatar"<?php echo !empty($avatar['imagem']) ? ' style="background-image:url(\'' . esc_url($avatar['imagem']) . '\')"' : ''; ?>></span>
-                                    <?php endforeach; ?>
+                                    <?php echo PressaoPlugin_Render_Helpers::render_avatares($avatares, 'pressao-fluxo-avatar'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                                 </span>
                                 <span class="pressao-fluxo-candidatos-copy">
                                     <span class="pressao-fluxo-candidatos-count">
@@ -1226,18 +1122,12 @@ class PressaoPlugin_Shortcode {
                             </header>
                             <p class="pressao-fluxo-subtitle"><?php esc_html_e('Receba atualizações sobre a campanha e novas formas de pressionar pela Tarifa Zero.', 'pressao-plugin'); ?></p>
                             <form class="pressao-fluxo-ativista-form" data-fluxo-form novalidate>
-                                <label class="pressao-fluxo-field-label">
-                                    <?php esc_html_e('Nome', 'pressao-plugin'); ?> <span class="pressao-fluxo-required">*</span>
-                                    <input type="text" name="nome" required placeholder="<?php esc_attr_e('Seu nome', 'pressao-plugin'); ?>" />
-                                </label>
-                                <label class="pressao-fluxo-field-label">
-                                    <?php esc_html_e('Email', 'pressao-plugin'); ?> <span class="pressao-fluxo-required">*</span>
-                                    <input type="email" name="email" required placeholder="<?php esc_attr_e('seu@email.com', 'pressao-plugin'); ?>" />
-                                </label>
-                                <label class="pressao-fluxo-field-label">
-                                    <?php esc_html_e('Whatsapp (opcional)', 'pressao-plugin'); ?>
-                                    <input type="tel" name="telefone" placeholder="(00) 00000-0000" inputmode="numeric" autocomplete="tel" data-fluxo-whatsapp />
-                                </label>
+                                <?php
+                                echo PressaoPlugin_Render_Helpers::render_campos_ativista([ // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                                    'prefix' => 'pressao-fluxo',
+                                    'telefone_attr' => 'data-fluxo-whatsapp',
+                                ]);
+                                ?>
                                 <p class="pressao-fluxo-form-error" data-fluxo-form-error hidden></p>
                                 <div class="pressao-fluxo-footer-actions">
                                     <button type="submit" class="pressao-fluxo-btn pressao-fluxo-btn-primary" data-fluxo-receber>
@@ -1329,46 +1219,6 @@ class PressaoPlugin_Shortcode {
         return ob_get_clean();
     }
 
-    /**
-     * Normaliza option de candidatos para o config JS do [pressao_fluxo].
-     *
-     * @param mixed  $raw
-     * @param string $id_prefix
-     * @return array<int, array<string, string>>
-     */
-    private function normalize_candidatos_for_fluxo($raw, $id_prefix = 'c') {
-        $out = [];
-        if (!is_array($raw)) {
-            return $out;
-        }
-
-        foreach ($raw as $index => $candidato) {
-            if (!is_array($candidato)) {
-                continue;
-            }
-            $handle = isset($candidato['link_url']) ? trim((string) $candidato['link_url']) : '';
-            if ($handle !== '' && strpos($handle, '@') !== 0) {
-                $handle = '@' . ltrim($handle, '@');
-            }
-            if ($handle === '') {
-                continue;
-            }
-            $imagem_id = absint($candidato['imagem_id'] ?? 0);
-            $imagem_url = $imagem_id ? wp_get_attachment_image_url($imagem_id, 'thumbnail') : '';
-            $out[] = [
-                'id' => $id_prefix . $index,
-                'nome' => $candidato['nome'] ?? '',
-                'cargo' => $candidato['cargo'] ?? '',
-                'cargo_chave' => PressaoPlugin_Candidatos_Filtros::normalize_cargo($candidato['cargo'] ?? ''),
-                'partido' => $candidato['partido'] ?? '',
-                'estado' => PressaoPlugin_Candidatos_Filtros::sanitize_uf($candidato['estado'] ?? ''),
-                'instagram' => $handle,
-                'imagem' => $imagem_url ? $imagem_url : '',
-            ];
-        }
-
-        return $out;
-    }
 }
 
 // Inicializa o shortcode
