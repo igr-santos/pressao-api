@@ -5,147 +5,16 @@
 (function () {
     'use strict';
 
-    var SESSAO_COOKIE = 'pressao_sessao_id';
-    var COOKIE_ACTIONS = 'pressao_acoes_realizadas';
+    var Core = window.PressaoCore;
     var TOAST_MS = 2800;
     var REDIRECT_COUNTDOWN_S = 3;
 
-    function data() {
-        return window.pressaoFluxoData || {};
-    }
-
-    function setCookie(name, value, seconds) {
-        var expires = '';
-        if (seconds && seconds > 0) {
-            var date = new Date();
-            date.setTime(date.getTime() + seconds * 1000);
-            expires = '; expires=' + date.toUTCString();
-        }
-        document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/; SameSite=Lax';
-    }
-
-    function getCookie(name) {
-        var nameEQ = name + '=';
-        var ca = document.cookie.split(';');
-        for (var i = 0; i < ca.length; i++) {
-            var c = ca[i].trim();
-            if (c.indexOf(nameEQ) === 0) {
-                return decodeURIComponent(c.substring(nameEQ.length));
-            }
-        }
-        return null;
-    }
-
-    function sessionDuration() {
-        return parseInt(data().sessionDuration, 10) || 86400;
-    }
-
-    function getOrCreateSessaoId() {
-        var id = getCookie(SESSAO_COOKIE);
-        if (!id) {
-            id = crypto.randomUUID();
-            setCookie(SESSAO_COOKIE, id, sessionDuration());
-        }
-        return id;
-    }
-
-    function escapeHtml(str) {
-        return String(str == null ? '' : str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function escapeAttr(str) {
-        return escapeHtml(str).replace(/`/g, '&#96;');
-    }
-
-    function digitsOnly(value) {
-        return String(value || '').replace(/\D/g, '');
-    }
-
-    /** Máscara BR: (11) 9999-9999 ou (11) 99999-9999 */
-    function formatPhoneMask(value) {
-        var digits = digitsOnly(value).slice(0, 11);
-        if (!digits.length) {
-            return '';
-        }
-        if (digits.length <= 2) {
-            return '(' + digits;
-        }
-        if (digits.length <= 6) {
-            return '(' + digits.slice(0, 2) + ') ' + digits.slice(2);
-        }
-        if (digits.length <= 10) {
-            return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 6) + '-' + digits.slice(6);
-        }
-        return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 7) + '-' + digits.slice(7);
-    }
-
-    function bindPhoneMask(input) {
-        if (!input || input.dataset.maskBound === 'true') {
-            return;
-        }
-        input.dataset.maskBound = 'true';
-        input.setAttribute('inputmode', 'numeric');
-        input.setAttribute('autocomplete', 'tel');
-        input.addEventListener('input', function () {
-            var start = input.selectionStart;
-            var before = input.value.length;
-            input.value = formatPhoneMask(input.value);
-            var after = input.value.length;
-            if (typeof start === 'number') {
-                var next = Math.max(0, start + (after - before));
-                try {
-                    input.setSelectionRange(next, next);
-                } catch (e) { /* ignore */ }
-            }
-        });
-    }
-
-    function formatCount(n) {
-        return Number(n || 0).toLocaleString('pt-BR');
-    }
-
-    function animateCountUp(el, from, to, durationMs) {
-        durationMs = durationMs || 800;
-        if (from === to) {
-            el.textContent = formatCount(to);
-            el.dataset.count = String(to);
-            return;
-        }
-        var start = performance.now();
-        function easeOut(t) {
-            return 1 - Math.pow(1 - t, 3);
-        }
-        function frame(now) {
-            var progress = Math.min((now - start) / durationMs, 1);
-            var current = Math.round(from + (to - from) * easeOut(progress));
-            el.textContent = formatCount(current);
-            el.dataset.count = String(current);
-            if (progress < 1) {
-                requestAnimationFrame(frame);
-            }
-        }
-        requestAnimationFrame(frame);
-    }
-
-    function updateCounter(campaignId, newValue) {
-        if (!campaignId) {
-            return;
-        }
-        document.querySelectorAll('.pressao-acoes-counter[data-campaign="' + campaignId + '"]').forEach(function (counter) {
-            var el = counter.querySelector('.pressao-acoes-count');
-            if (!el) {
-                return;
-            }
-            var from = parseInt(el.dataset.count || el.textContent.replace(/\D/g, ''), 10) || 0;
-            var to = typeof newValue === 'number' ? newValue : from + 1;
-            animateCountUp(el, from, to);
-        });
-    }
+    var escapeHtml = Core.escapeHtml;
+    var escapeAttr = Core.escapeAttr;
+    var digitsOnly = Core.digitsOnly;
+    var bindPhoneMask = Core.bindPhoneMask;
+    var updateCounter = Core.updateCounter;
+    var saveActionCookie = Core.saveActionCookie;
 
     function parseConfig(root) {
         var raw = root.getAttribute('data-pressao-fluxo') || '{}';
@@ -157,66 +26,6 @@
         }
     }
 
-    function isNonceError(message) {
-        return /nonce/i.test(String(message || ''));
-    }
-
-    function refreshNonce(root) {
-        return fetch(data().ajaxUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            credentials: 'same-origin',
-            body: new URLSearchParams({
-                action: 'pressao_refresh_nonce',
-                nonce: root.dataset.nonce || data().nonce || ''
-            })
-        })
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (json) {
-                var nonce = json && json.data && json.data.nonce;
-                if (nonce) {
-                    root.dataset.nonce = nonce;
-                    return nonce;
-                }
-                return root.dataset.nonce || data().nonce || '';
-            })
-            .catch(function () {
-                return root.dataset.nonce || data().nonce || '';
-            });
-    }
-
-    function postAjax(payload) {
-        return fetch(data().ajaxUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            credentials: 'same-origin',
-            body: new URLSearchParams(payload)
-        }).then(function (response) {
-            var contentType = response.headers.get('content-type') || '';
-            if (!contentType.includes('application/json')) {
-                return response.text().then(function () {
-                    throw new Error('Resposta inválida do servidor (esperado JSON).');
-                });
-            }
-            return response.json();
-        });
-    }
-
-    function saveActionCookie(alvoId, entry) {
-        var actions = {};
-        try {
-            var raw = getCookie(COOKIE_ACTIONS);
-            if (raw) {
-                actions = JSON.parse(raw) || {};
-            }
-        } catch (e) {
-            actions = {};
-        }
-        actions[alvoId] = entry;
-        setCookie(COOKIE_ACTIONS, JSON.stringify(actions), sessionDuration());
-    }
 
     function initFluxo(root) {
         var config = parseConfig(root);
@@ -473,32 +282,17 @@
          * Não esconde o toast ao resolver — o caller controla o dismiss.
          */
         function showToastCountdown(title, buildTextFn, seconds, onTick) {
-            return new Promise(function (resolve) {
-                if (!toastEl) {
-                    resolve();
-                    return;
-                }
-                var remaining = seconds;
-                toastTitle.textContent = title || '';
+            if (!toastEl) {
+                return Promise.resolve();
+            }
+            toastTitle.textContent = title || '';
+            toastEl.hidden = false;
+            toastEl.classList.add('is-visible');
+            return Core.countdown(seconds, function (remaining) {
                 toastText.textContent = typeof buildTextFn === 'function' ? buildTextFn(remaining) : '';
-                toastEl.hidden = false;
-                toastEl.classList.add('is-visible');
                 if (typeof onTick === 'function') {
                     onTick(remaining);
                 }
-
-                var timer = setInterval(function () {
-                    remaining -= 1;
-                    if (remaining <= 0) {
-                        clearInterval(timer);
-                        resolve();
-                        return;
-                    }
-                    toastText.textContent = typeof buildTextFn === 'function' ? buildTextFn(remaining) : '';
-                    if (typeof onTick === 'function') {
-                        onTick(remaining);
-                    }
-                }, 1000);
             });
         }
 
@@ -516,12 +310,7 @@
                     return c.instagram;
                 })
                 .filter(Boolean);
-            var prefix = handles.join(', ');
-            var body = (config.template_conteudo || '').trim();
-            if (prefix && body) {
-                return prefix + ' ' + body;
-            }
-            return prefix || body;
+            return Core.montarMensagemComHandles(handles, config.template_conteudo);
         }
 
         function renderChips() {
@@ -556,226 +345,16 @@
         }
 
         function renderShare() {
-            var mount = queryOne('[data-fluxo-share]');
-            if (!mount) {
-                return;
-            }
-            var share = config.share || {};
-            // Layout do fluxo sempre exibe os 3 canais; link opcional (admin).
-            var social = [
-                { canal: 'whatsapp', url: share.whatsapp_url || '', label: 'WhatsApp' },
-                { canal: 'instagram', url: share.instagram_url || '', label: 'Instagram' },
-                { canal: 'messenger', url: share.messenger_url || '', label: 'Messenger' }
-            ];
-            var socialHtml = social
-                .map(function (btn) {
-                    var hasUrl = !!btn.url;
-                    var tagOpen = hasUrl
-                        ? '<a class="pressao-fluxo-share-social" data-canal="' +
-                          escapeAttr(btn.canal) +
-                          '" href="' +
-                          escapeAttr(btn.url) +
-                          '" target="_blank" rel="noopener noreferrer">'
-                        : '<span class="pressao-fluxo-share-social is-disabled" data-canal="' +
-                          escapeAttr(btn.canal) +
-                          '" aria-disabled="true" title="Configure o link em Compartilhamento">';
-                    var tagClose = hasUrl ? '</a>' : '</span>';
-                    return (
-                        tagOpen +
-                        '<span class="pressao-fluxo-share-social-icon" data-canal="' +
-                        escapeAttr(btn.canal) +
-                        '" aria-hidden="true"></span>' +
-                        '<span class="pressao-fluxo-share-social-label">' +
-                        escapeHtml(btn.label) +
-                        '</span>' +
-                        tagClose
-                    );
-                })
-                .join('');
-
-            var imagens = Array.isArray(share.imagens) ? share.imagens : [];
-            var firstThumb = imagens.length ? imagens[0].thumb || imagens[0].url || '' : '';
-            var imagesCard = imagens.length
-                ? '<button type="button" class="pressao-fluxo-images-card" data-fluxo-images-open>' +
-                  '<span class="pressao-fluxo-images-thumb"' +
-                  (firstThumb ? ' style="background-image:url(\'' + escapeAttr(firstThumb) + '\')"' : '') +
-                  '></span>' +
-                  '<span class="pressao-fluxo-images-copy"><strong>' +
-                  escapeHtml(share.imagens_titulo || 'Imagens para postar') +
-                  '</strong><span>' +
-                  escapeHtml(share.imagens_subtitulo || 'baixe imagens prontas para postar nas redes') +
-                  '</span></span>' +
-                  '<span class="pressao-fluxo-images-arrow" aria-hidden="true"></span></button>'
-                : '';
-
-            var linkDisplay = share.link || '';
-            var imagesItems = imagens
-                .map(function (img, index) {
-                    return (
-                        '<div class="pressao-fluxo-image-item" data-index="' +
-                        index +
-                        '">' +
-                        '<div class="pressao-fluxo-image-thumb-wrap">' +
-                        '<span class="pressao-fluxo-image-thumb" style="background-image:url(\'' +
-                        escapeAttr(img.thumb || img.url) +
-                        '\')"></span>' +
-                        '<button type="button" class="pressao-fluxo-image-download" data-index="' +
-                        index +
-                        '">BAIXAR</button>' +
-                        '</div>' +
-                        '<span class="pressao-fluxo-image-rotulo">' +
-                        escapeHtml(img.rotulo || '') +
-                        '</span></div>'
-                    );
-                })
-                .join('');
-
-            var downloadAllBtn = imagens.length
-                ? '<button type="button" class="pressao-fluxo-btn pressao-fluxo-btn-primary" data-fluxo-download-all>' +
-                  'Baixar todas as imagens' +
-                  '<span class="pressao-fluxo-btn-download" aria-hidden="true"></span></button>'
-                : '';
-
-            mount.innerHTML =
-                '<div class="pressao-fluxo-share-main" data-fluxo-share-main>' +
-                '<h2 class="pressao-fluxo-title">' +
-                escapeHtml('Convide mais pessoas') +
-                '</h2>' +
-                '<p class="pressao-fluxo-subtitle">' +
-                escapeHtml(
-                    'Quanto mais gente participar, maior a pressão pela Tarifa Zero. Você pode compartilhar com amigos ou marcar mais parlamentares.'
-                ) +
-                '</p>' +
-                '<button type="button" class="pressao-fluxo-link-row" data-fluxo-copy-link aria-label="Copiar link">' +
-                '<span class="pressao-fluxo-link-text">' +
-                escapeHtml(linkDisplay) +
-                '</span>' +
-                '<span class="pressao-fluxo-copy-link" data-fluxo-copy-btn>' +
-                '<span class="pressao-fluxo-copy-icon" aria-hidden="true"></span>' +
-                '<span class="pressao-fluxo-copy-label">Copiar link</span></span></button>' +
-                (socialHtml ? '<div class="pressao-fluxo-share-social-row">' + socialHtml + '</div>' : '') +
-                imagesCard +
-                '<button type="button" class="pressao-fluxo-btn pressao-fluxo-btn-secondary" data-fluxo-reset>' +
-                'Pressionar outros candidatos</button>' +
-                '</div>' +
-                '<div class="pressao-fluxo-images-screen" data-fluxo-images-screen hidden>' +
-                '<header class="pressao-fluxo-images-header">' +
-                '<button type="button" class="pressao-fluxo-back" data-fluxo-images-back aria-label="Voltar"></button>' +
-                '<h3 class="pressao-fluxo-nav-title">' +
-                escapeHtml(share.imagens_titulo || 'Imagens para postar') +
-                '</h3></header>' +
-                '<p class="pressao-fluxo-subtitle">' +
-                escapeHtml(
-                    share.imagens_instrucao ||
-                        'Utilize nossas imagens nas suas redes para que outras pessoas conheçam a campanha:'
-                ) +
-                '</p>' +
-                '<div class="pressao-fluxo-images-grid">' +
-                imagesItems +
-                '</div>' +
-                downloadAllBtn +
-                '</div>';
-
-            function setCopiedState(isCopied) {
-                var btn = mount.querySelector('[data-fluxo-copy-btn]');
-                var label = mount.querySelector('.pressao-fluxo-copy-label');
-                var icon = mount.querySelector('.pressao-fluxo-copy-icon');
-                if (!btn || !label) {
-                    return;
-                }
-                if (isCopied) {
-                    btn.classList.add('is-copied');
-                    label.textContent = 'Copiado!';
-                    if (icon) {
-                        icon.classList.add('is-check');
-                    }
-                } else {
-                    btn.classList.remove('is-copied');
-                    label.textContent = 'Copiar link';
-                    if (icon) {
-                        icon.classList.remove('is-check');
-                    }
-                }
-            }
-
-            function copyLink() {
-                var link = share.link || '';
-                if (!link) {
-                    return;
-                }
-                var done = function () {
-                    setCopiedState(true);
-                    setTimeout(function () {
-                        setCopiedState(false);
-                    }, 1800);
-                };
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(link).then(done).catch(done);
-                } else {
-                    done();
-                }
-            }
-
-            var copyRow = mount.querySelector('[data-fluxo-copy-link]');
-            if (copyRow) {
-                copyRow.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    copyLink();
-                });
-            }
-
-            var openImages = mount.querySelector('[data-fluxo-images-open]');
-            var imagesScr = mount.querySelector('[data-fluxo-images-screen]');
-            var mainScr = mount.querySelector('[data-fluxo-share-main]');
-            if (openImages && imagesScr && mainScr) {
-                openImages.addEventListener('click', function () {
-                    mainScr.hidden = true;
-                    imagesScr.hidden = false;
-                    imagesScr.classList.add('is-entering');
-                    if (window.PressaoShareImages && typeof window.PressaoShareImages.prefetch === 'function') {
-                        window.PressaoShareImages.prefetch(imagens);
-                    }
-                });
-            }
-            var backImages = mount.querySelector('[data-fluxo-images-back]');
-            if (backImages && imagesScr && mainScr) {
-                backImages.addEventListener('click', function () {
-                    imagesScr.hidden = true;
-                    imagesScr.classList.remove('is-entering');
-                    mainScr.hidden = false;
-                });
-            }
-
-            var resetBtn = mount.querySelector('[data-fluxo-reset]');
-            if (resetBtn) {
-                resetBtn.addEventListener('click', resetFluxo);
-            }
-
-            function handleFluxoImageAction(index) {
-                if (isNaN(index) || !imagens[index]) {
-                    return;
-                }
-                if (window.PressaoShareImages && typeof window.PressaoShareImages.downloadOrShareOne === 'function') {
-                    window.PressaoShareImages.downloadOrShareOne(imagens[index], index);
-                }
-            }
-
-            mount.querySelectorAll('.pressao-fluxo-image-item').forEach(function (item) {
-                item.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    var index = parseInt(item.getAttribute('data-index'), 10);
-                    handleFluxoImageAction(index);
-                });
+            Core.renderShare(queryOne('[data-fluxo-share]'), config.share || {}, {
+                prefix: 'pressao-fluxo',
+                dataPrefix: 'fluxo',
+                // Layout do fluxo sempre exibe os 3 canais; link opcional (admin).
+                redes: ['whatsapp', 'instagram', 'messenger'],
+                titulo: 'Convide mais pessoas',
+                subtitulo: 'Quanto mais gente participar, maior a pressão pela Tarifa Zero. Você pode compartilhar com amigos ou marcar mais parlamentares.',
+                resetLabel: 'Pressionar outros candidatos',
+                onReset: resetFluxo
             });
-
-            var downloadAll = mount.querySelector('[data-fluxo-download-all]');
-            if (downloadAll) {
-                downloadAll.addEventListener('click', function () {
-                    if (window.PressaoShareImages && typeof window.PressaoShareImages.downloadOrShareAll === 'function') {
-                        window.PressaoShareImages.downloadOrShareAll(imagens);
-                    }
-                });
-            }
         }
 
         function syncSelectedFromTom() {
@@ -794,54 +373,6 @@
             showScreen('acao');
         }
 
-        // Detecção por user agent (não por largura): comportamento de deep link
-        // / Intent é do dispositivo, não do layout responsivo.
-        function isMobileBrowser() {
-            return /Android|iPhone|iPad|iPod|Mobile|IEMobile|BlackBerry/i.test(navigator.userAgent || '');
-        }
-
-        function isAndroidBrowser() {
-            return /Android/i.test(navigator.userAgent || '');
-        }
-
-        /**
-         * Mobile: tenta abrir o app Instagram sem nova aba do browser, para o
-         * X/voltar do app devolver à página do fluxo (já em confirmação).
-         * Android usa Intent; iOS dispara Universal Link via <a> sem target.
-         * Desktop: window.open em nova aba.
-         */
-        function openInstagramApp(webUrl) {
-            if (!webUrl) {
-                return;
-            }
-
-            if (!isMobileBrowser()) {
-                window.open(webUrl, '_blank', 'noopener,noreferrer');
-                return;
-            }
-
-            if (isAndroidBrowser()) {
-                var path = webUrl.replace(/^https?:\/\//i, '');
-                var intentUrl =
-                    'intent://' +
-                    path +
-                    '#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=' +
-                    encodeURIComponent(webUrl) +
-                    ';end';
-                window.location.href = intentUrl;
-                return;
-            }
-
-            // iOS e demais mobile: Universal Links costumam abrir o app e
-            // deixar o Safari/Chrome na página; sem target=_blank.
-            var anchor = document.createElement('a');
-            anchor.href = webUrl;
-            anchor.rel = 'noopener noreferrer';
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-        }
-
         function copiarEAbrir() {
             var texto = buildMessage();
             var url = config.contato_url || '';
@@ -855,7 +386,7 @@
             };
 
             var openUrl = function () {
-                openInstagramApp(url);
+                Core.openAppUrl(url, 'instagram');
             };
 
             var afterCopy = function () {
@@ -880,11 +411,7 @@
                 });
             };
 
-            if (texto && navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(texto).then(afterCopy).catch(afterCopy);
-            } else {
-                afterCopy();
-            }
+            Core.copyText(texto).then(afterCopy);
         }
 
         function setFormError(msg) {
@@ -918,78 +445,14 @@
             var campanhaId = config.campanha_id;
             var canal = config.canal || 'instagram';
 
-            function realizar(nonce) {
-                return postAjax({
-                    action: 'pressao_realizar_acao',
-                    alvo_id: alvoId,
-                    campanha_id: campanhaId,
-                    canal: canal,
-                    template_id: config.template_id || '',
-                    nonce: nonce,
-                    sessao_id: getOrCreateSessaoId(),
-                    ativista_nome: (ativista && ativista.nome) || '',
-                    ativista_email: (ativista && ativista.email) || '',
-                    ativista_telefone: (ativista && ativista.telefone) || ''
-                });
-            }
-
-            function confirmar(nonce, acaoId) {
-                return postAjax({
-                    action: 'pressao_confirmar_acao',
-                    acao_id: acaoId,
-                    alvo_id: alvoId,
-                    campanha_id: campanhaId,
-                    nonce: nonce
-                });
-            }
-
-            return refreshNonce(root)
-                .then(function (nonce) {
-                    return realizar(nonce).then(function (response) {
-                        if (response.success) {
-                            return response;
-                        }
-                        var message = (response.data && response.data.message) || 'Erro ao criar ação';
-                        if (isNonceError(message)) {
-                            return refreshNonce(root).then(function (fresh) {
-                                return realizar(fresh);
-                            });
-                        }
-                        return response;
-                    });
-                })
-                .then(function (response) {
-                    if (!response.success) {
-                        throw new Error((response.data && response.data.message) || 'Erro ao criar ação');
-                    }
-                    var apiData = (response.data && response.data.data) || {};
-                    var acaoId = (response.data && response.data.acao_id) || apiData.acao_id;
-                    if (!acaoId) {
-                        throw new Error('ID da ação não encontrado.');
-                    }
-                    return refreshNonce(root).then(function (nonce) {
-                        return confirmar(nonce, acaoId).then(function (confResponse) {
-                            if (confResponse.success) {
-                                return { create: response, confirm: confResponse, acaoId: acaoId };
-                            }
-                            var message =
-                                (confResponse.data && confResponse.data.message) || 'Erro ao confirmar ação';
-                            if (isNonceError(message)) {
-                                return refreshNonce(root).then(function (fresh) {
-                                    return confirmar(fresh, acaoId).then(function (retry) {
-                                        if (!retry.success) {
-                                            throw new Error(
-                                                (retry.data && retry.data.message) || 'Erro ao confirmar ação'
-                                            );
-                                        }
-                                        return { create: response, confirm: retry, acaoId: acaoId };
-                                    });
-                                });
-                            }
-                            throw new Error(message);
-                        });
-                    });
-                })
+            return Core.criarEConfirmarAcao({
+                root: root,
+                alvoId: alvoId,
+                campanhaId: campanhaId,
+                canal: canal,
+                templateId: config.template_id || '',
+                ativista: ativista
+            })
                 .then(function (result) {
                     var confData = (result.confirm.data && result.confirm.data) || {};
                     saveActionCookie(alvoId, {

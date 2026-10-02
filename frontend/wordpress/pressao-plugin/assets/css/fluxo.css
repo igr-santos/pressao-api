@@ -1,57 +1,6 @@
 /* Fluxo único Instagram — isolado de style.css / [pressao_alvos] */
 
-@font-face {
-  font-family: "Anton";
-  src: url("../fonts/Anton/Anton-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Host Grotesk";
-  src: url("../fonts/Host_Grotesk/HostGrotesk-VariableFont_wght.ttf") format("truetype");
-  font-weight: 300 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Declaradas em :root (não só em .pressao-fluxo) porque os overlays de
-   tela cheia (lista/help/seq/toast) são movidos via JS pra filhos diretos
-   do <body> — pra escapar do contexto de empilhamento em que o tema prende
-   o conteúdo da página (ver comentário sobre `.pressao-fluxo header`
-   abaixo). Se essas variáveis só existissem em .pressao-fluxo, os overlays
-   portados perderiam a herança delas ao sair de dentro do widget. */
-:root {
-  --fluxo-bg: #ffffff;
-  --fluxo-text: #262626;
-  --fluxo-muted: #737373;
-  --fluxo-muted-2: #595959;
-  --fluxo-border: #bfbfbf;
-  --fluxo-border-soft: #d4d4d4;
-  --fluxo-soft: #f9f9f9;
-  --fluxo-soft-2: #f0f0f0;
-  --fluxo-chip: #eef2f6;
-  --fluxo-cta: #cc4a00;
-  --fluxo-secondary: #281150;
-  --fluxo-help-acao: #093217;
-  --fluxo-danger: #cc0000;
-  --fluxo-radius: 16px;
-  --fluxo-radius-card: 40px;
-  --fluxo-btn-radius: 80px;
-  --fluxo-font: "Host Grotesk", Helvetica, Arial, sans-serif;
-  --fluxo-font-display: "Anton", Helvetica, Arial, sans-serif;
-  --pressao-icon-instagram: url("../icons/instagram.svg");
-  --pressao-icon-seta: url("../icons/seta.svg");
-  --pressao-icon-seta-direita: url("../icons/seta-direita.svg");
-  --pressao-icon-abrir-externo: url("../icons/abrir-externo.svg");
-  --pressao-icon-check-circulo: url("../icons/check-circulo.svg");
-  --pressao-icon-raio: url("../icons/raio-barra-progresso.svg");
-  --pressao-icon-copiar: url("../icons/copiar.svg");
-  --pressao-icon-whatsapp: url("../icons/whatsapp.svg");
-  --pressao-icon-messenger: url("../icons/messenger.svg");
-  --pressao-icon-download: url("../icons/download.svg");
-}
+/* Fontes e tokens (--fluxo-*, ícones) vêm de pressao-ui.css (dependência deste arquivo). */
 
 .pressao-fluxo {
   font-family: var(--fluxo-font);
