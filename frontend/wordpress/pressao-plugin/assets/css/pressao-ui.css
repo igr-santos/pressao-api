@@ -1,0 +1,86 @@
+/* Base visual comum de [pressao_fluxo] e [pressao_multicanal]: fontes, tokens e ícones. */
+
+@font-face {
+  font-family: "Anton";
+  src: url("../fonts/Anton/Anton-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Host Grotesk";
+  src: url("../fonts/Host_Grotesk/HostGrotesk-VariableFont_wght.ttf") format("truetype");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --fluxo-bg: #ffffff;
+  --fluxo-text: #262626;
+  --fluxo-muted: #737373;
+  --fluxo-muted-2: #595959;
+  --fluxo-border: #bfbfbf;
+  --fluxo-border-soft: #d4d4d4;
+  --fluxo-soft: #f9f9f9;
+  --fluxo-soft-2: #f0f0f0;
+  --fluxo-chip: #eef2f6;
+  --fluxo-cta: #cc4a00;
+  --fluxo-secondary: #281150;
+  --fluxo-help-acao: #093217;
+  --fluxo-danger: #cc0000;
+  --fluxo-radius: 16px;
+  --fluxo-radius-card: 40px;
+  --fluxo-btn-radius: 80px;
+  --fluxo-font: "Host Grotesk", Helvetica, Arial, sans-serif;
+  --fluxo-font-display: "Anton", Helvetica, Arial, sans-serif;
+
+  --pressao-ui-black: #000000;
+  --pressao-ui-white: #ffffff;
+  --pressao-ui-dark: #262626;
+  --pressao-ui-success: #008700;
+  --pressao-ui-success-soft: #ebf7eb;
+  --pressao-ui-link: #1765cc;
+  --pressao-ui-accordion: #eef2f6;
+  --pressao-ui-shadow-sheet: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  --pressao-ui-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+  /* Fallback relativo; o PHP injeta as mesmas variáveis com URL absoluta. */
+  --pressao-icon-instagram: url("../icons/instagram.svg");
+  --pressao-icon-tiktok: url("../icons/tiktok.svg");
+  --pressao-icon-email: url("../icons/email.svg");
+  --pressao-icon-x: url("../icons/x.svg");
+  --pressao-icon-seta: url("../icons/seta.svg");
+  --pressao-icon-seta-direita: url("../icons/seta-direita.svg");
+  --pressao-icon-seta-diagonal: url("../icons/seta-diagonal.svg");
+  --pressao-icon-seta-circulo: url("../icons/seta-com-circulo.svg");
+  --pressao-icon-seta-circulo-contorno: url("../icons/seta-circulo-contorno.svg");
+  --pressao-icon-seta-circulo-cheia: url("../icons/seta-circulo-cheia.svg");
+  --pressao-icon-abrir-externo: url("../icons/abrir-externo.svg");
+  --pressao-icon-check: url("../icons/check.svg");
+  --pressao-icon-check-circulo: url("../icons/check-circulo.svg");
+  --pressao-icon-raio: url("../icons/raio-barra-progresso.svg");
+  --pressao-icon-copiar: url("../icons/copiar.svg");
+  --pressao-icon-compartilhar: url("../icons/compartilhar.svg");
+  --pressao-icon-enviar: url("../icons/enviar.svg");
+  --pressao-icon-whatsapp: url("../icons/whatsapp.svg");
+  --pressao-icon-messenger: url("../icons/messenger.svg");
+  --pressao-icon-download: url("../icons/download.svg");
+  --pressao-icon-localizacao: url("../icons/localizacao.svg");
+  --pressao-icon-interrogacao: url("../icons/interrogacao.svg");
+  --pressao-icon-fechar: url("../icons/fechar.svg");
+  --pressao-icon-chevron: url("../icons/chevron.svg");
+}
+
+.pressao-ui-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
