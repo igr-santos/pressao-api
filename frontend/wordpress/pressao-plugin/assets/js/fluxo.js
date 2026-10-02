@@ -226,10 +226,15 @@
 
         var state = {
             selectedIds: [],
-            submitting: false
+            submitting: false,
+            modo: 'busca'
         };
 
         var selectEl = root.querySelector('[data-fluxo-select]');
+        var selectEstadoEl = root.querySelector('[data-fluxo-select-estado]');
+        var estadoEl = root.querySelector('[data-fluxo-estado]');
+        var cargosEl = root.querySelector('[data-fluxo-cargos]');
+        var cargosListEl = root.querySelector('[data-fluxo-cargos-list]');
         var listaOverlay = root.querySelector('[data-fluxo-lista]');
         var helpOverlay = root.querySelector('[data-fluxo-help]');
         var seqOverlay = root.querySelector('[data-fluxo-seq]');
@@ -238,6 +243,7 @@
         var toastText = root.querySelector('[data-fluxo-toast-text]');
         var formError = root.querySelector('[data-fluxo-form-error]');
         var tom = null;
+        var tomEstado = null;
         var candidatosById = {};
         var seqCloseTimer = null;
         var bodyScrollLocked = false;
@@ -773,7 +779,8 @@
         }
 
         function syncSelectedFromTom() {
-            state.selectedIds = tom ? tom.getValue() : [];
+            var ativo = state.modo === 'estado' ? tomEstado : tom;
+            state.selectedIds = ativo ? ativo.getValue() : [];
         }
 
         function goToAcao() {
@@ -1014,9 +1021,9 @@
 
         function resetFluxo() {
             state.selectedIds = [];
-            if (tom) {
-                tom.clear(true);
-            }
+            clearModo('busca');
+            clearModo('estado');
+            openModo('busca');
             var form = queryOne('[data-fluxo-form]');
             if (form) {
                 form.reset();
@@ -1025,58 +1032,55 @@
             showScreen('inicio');
         }
 
-        if (selectEl && typeof TomSelect !== 'undefined') {
-            tom = new TomSelect(selectEl, {
+        function candidatoAvatar(c, escape) {
+            return c.imagem
+                ? '<span class="pressao-fluxo-ts-avatar" style="background-image:url(\'' + escape(c.imagem) + '\')"></span>'
+                : '';
+        }
+
+        function renderCandidatoOption(data, escape) {
+            var c = candidatosById[data.value] || {};
+            var nome = c.nome || c.instagram || data.text;
+            var meta = [c.nome ? c.instagram : '', c.cargo, c.partido].filter(Boolean).join(' · ');
+            return (
+                '<div class="pressao-fluxo-ts-option' +
+                (c.imagem ? '' : ' is-text-only') +
+                '">' +
+                candidatoAvatar(c, escape) +
+                '<span class="pressao-fluxo-ts-option-text">' +
+                '<span class="pressao-fluxo-ts-option-nome">' + escape(nome) + '</span>' +
+                (meta ? '<span class="pressao-fluxo-ts-option-meta">' + escape(meta) + '</span>' : '') +
+                '</span></div>'
+            );
+        }
+
+        function renderCandidatoItem(data, escape) {
+            var c = candidatosById[data.value] || {};
+            return (
+                '<div class="pressao-fluxo-ts-item' +
+                (c.imagem ? '' : ' is-text-only') +
+                '">' +
+                candidatoAvatar(c, escape) +
+                '<span>' + escape(c.instagram || data.text) + '</span></div>'
+            );
+        }
+
+        function createCandidatoSelect(el, modo) {
+            return new TomSelect(el, {
                 plugins: ['remove_button'],
                 maxItems: config.limite_candidatos || 5,
                 maxOptions: null,
                 searchField: ['text'],
-                placeholder: selectEl.getAttribute('placeholder') || 'Digite o nome ou @ do Instagram',
+                placeholder: el.getAttribute('placeholder') || 'Digite o nome ou @ do Instagram',
                 render: {
                     no_results: function () {
                         return '<div class="no-results">Não encontramos resultados para sua busca</div>';
                     },
-                    option: function (data, escape) {
-                        var opt = selectEl.querySelector('option[value="' + data.value + '"]');
-                        var img = opt ? opt.getAttribute('data-imagem') : '';
-                        var handle = opt ? opt.getAttribute('data-instagram') : '';
-                        var avatar = img
-                            ? '<span class="pressao-fluxo-ts-avatar" style="background-image:url(\'' +
-                              escape(img) +
-                              '\')"></span>'
-                            : '';
-                        return (
-                            '<div class="pressao-fluxo-ts-option' +
-                            (img ? '' : ' is-text-only') +
-                            '">' +
-                            avatar +
-                            '<span>' +
-                            escape(data.text) +
-                            (handle ? '' : '') +
-                            '</span></div>'
-                        );
-                    },
-                    item: function (data, escape) {
-                        var opt = selectEl.querySelector('option[value="' + data.value + '"]');
-                        var img = opt ? opt.getAttribute('data-imagem') : '';
-                        var handle = opt ? opt.getAttribute('data-instagram') : data.text;
-                        var avatar = img
-                            ? '<span class="pressao-fluxo-ts-avatar" style="background-image:url(\'' +
-                              escape(img) +
-                              '\')"></span>'
-                            : '';
-                        return (
-                            '<div class="pressao-fluxo-ts-item' +
-                            (img ? '' : ' is-text-only') +
-                            '">' +
-                            avatar +
-                            '<span>' +
-                            escape(handle) +
-                            '</span></div>'
-                        );
-                    }
+                    option: renderCandidatoOption,
+                    item: renderCandidatoItem
                 },
                 onItemAdd: function () {
+                    onModoInput(modo);
                     syncSelectedFromTom();
                     this.setTextboxValue('');
                     this.refreshOptions(false);
@@ -1088,6 +1092,170 @@
                     syncSelectedFromTom();
                     this.setTextboxValue('');
                 }
+            });
+        }
+
+        function filtroDoEstado(uf) {
+            var filtros = config.filtros || [];
+            for (var i = 0; i < filtros.length; i++) {
+                if (filtros[i].uf === uf) {
+                    return filtros[i];
+                }
+            }
+            return null;
+        }
+
+        function cargosMarcados() {
+            if (!cargosListEl) {
+                return [];
+            }
+            return Array.prototype.slice
+                .call(cargosListEl.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(function (input) {
+                    return input.value;
+                });
+        }
+
+        function renderCargos(uf) {
+            if (!cargosEl || !cargosListEl) {
+                return;
+            }
+            cargosListEl.innerHTML = '';
+            var filtro = filtroDoEstado(uf);
+            var cargos = filtro && filtro.cargos ? filtro.cargos : [];
+            cargos.forEach(function (cargo) {
+                var label = document.createElement('label');
+                label.className = 'pressao-fluxo-cargo';
+                var input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = cargo.chave;
+                input.addEventListener('change', function () {
+                    onModoInput('estado');
+                    aplicarFiltroEstado();
+                });
+                var text = document.createElement('span');
+                text.textContent = cargo.label;
+                label.appendChild(input);
+                label.appendChild(text);
+                cargosListEl.appendChild(label);
+            });
+            cargosEl.hidden = cargos.length === 0;
+        }
+
+        function aplicarFiltroEstado() {
+            if (!tomEstado || !estadoEl) {
+                return;
+            }
+            var uf = estadoEl.value;
+            var cargos = cargosMarcados();
+            var permitidos = {};
+            var opcoes = [];
+            (config.candidatos || []).forEach(function (c) {
+                if (!uf || c.estado !== uf) {
+                    return;
+                }
+                if (cargos.length && cargos.indexOf(c.cargo_chave) === -1) {
+                    return;
+                }
+                permitidos[c.id] = true;
+                opcoes.push({ value: c.id, text: (c.nome ? c.nome + ' ' : '') + c.instagram });
+            });
+            tomEstado.getValue().forEach(function (id) {
+                if (!permitidos[id]) {
+                    tomEstado.removeItem(id, true);
+                }
+            });
+            tomEstado.clearOptions();
+            tomEstado.addOptions(opcoes);
+            tomEstado.refreshOptions(false);
+            syncSelectedFromTom();
+        }
+
+        function resetFiltroEstado() {
+            if (cargosListEl) {
+                cargosListEl.innerHTML = '';
+            }
+            if (cargosEl) {
+                cargosEl.hidden = true;
+            }
+            if (tomEstado) {
+                tomEstado.clear(true);
+                tomEstado.clearOptions();
+                tomEstado.disable();
+            }
+        }
+
+        function clearModo(modo) {
+            if (modo === 'busca') {
+                if (tom) {
+                    tom.clear(true);
+                }
+            } else {
+                if (estadoEl) {
+                    estadoEl.value = '';
+                }
+                resetFiltroEstado();
+            }
+            syncSelectedFromTom();
+        }
+
+        // Preencher uma opção limpa o que foi preenchido na outra.
+        function onModoInput(modo) {
+            clearModo(modo === 'busca' ? 'estado' : 'busca');
+        }
+
+        function openModo(modo) {
+            state.modo = modo;
+            root.querySelectorAll('[data-fluxo-modo]').forEach(function (section) {
+                var open = section.getAttribute('data-fluxo-modo') === modo;
+                section.classList.toggle('is-open', open);
+                var toggle = section.querySelector('[data-fluxo-modo-toggle]');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                }
+                var body = section.querySelector('.pressao-fluxo-modo-body');
+                if (body) {
+                    body.hidden = !open;
+                }
+            });
+            [tom, tomEstado].forEach(function (t) {
+                if (t) {
+                    t.close();
+                }
+            });
+            syncSelectedFromTom();
+        }
+
+        if (typeof TomSelect !== 'undefined') {
+            if (selectEl) {
+                tom = createCandidatoSelect(selectEl, 'busca');
+            }
+            if (selectEstadoEl) {
+                tomEstado = createCandidatoSelect(selectEstadoEl, 'estado');
+                tomEstado.disable();
+            }
+        }
+
+        root.querySelectorAll('[data-fluxo-modo-toggle]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openModo(btn.getAttribute('data-fluxo-modo-toggle'));
+            });
+        });
+
+        if (estadoEl) {
+            estadoEl.addEventListener('change', function () {
+                onModoInput('estado');
+                var uf = estadoEl.value;
+                if (!uf) {
+                    resetFiltroEstado();
+                    syncSelectedFromTom();
+                    return;
+                }
+                renderCargos(uf);
+                if (tomEstado) {
+                    tomEstado.enable();
+                }
+                aplicarFiltroEstado();
             });
         }
 

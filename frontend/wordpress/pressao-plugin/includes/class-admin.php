@@ -386,6 +386,7 @@ class PressaoPlugin_Admin {
                     <h2><?php esc_html_e('Candidatos a pressionar', 'pressao-plugin'); ?></h2>
                     <p><?php esc_html_e('Base usada na busca/seleção do [pressao_fluxo] (candidatos a pressionar).', 'pressao-plugin'); ?></p>
                     <?php PressaoPlugin_Candidatos_Admin_List::render(PressaoPlugin_Candidatos_Admin_List::OPTION_PRESSIONAR); ?>
+                    <?php PressaoPlugin_Candidatos_Filtros::render_admin_tools(); ?>
                     <form method="post" action="options.php" class="pressao-settings-fluxo-form">
                         <?php
                         settings_fields($this->get_option_group_for_tab('candidatos'));

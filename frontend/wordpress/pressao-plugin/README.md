@@ -75,6 +75,7 @@ pressao-plugin/
 ├── includes/
 │   ├── class-main.php          # Funcionalidades gerais
 │   ├── class-admin.php         # Página de configurações (abas)
+│   ├── class-candidatos-filtros.php     # Índice estado → cargos do “Filtre por estado” (fluxo)
 │   ├── class-candidatos-admin-list.php  # Tabela/expand/busca/paginação + AJAX
 │   ├── class-candidatos-import.php  # CSV apoiadores + remoção
 │   ├── class-candidatos-rest.php    # REST pressao/v1/candidatos-apoiadores
@@ -141,7 +142,8 @@ Cada aba de opções salva só o seu grupo (`pressao_settings_{aba}`), para não
 | Intervalo confirmar identidade | `pressao_ativista_confirm_interval` | Geral | Minutos até perguntar de novo (padrão `10`) |
 | Título do formulário | `pressao_ativista_form_title` | Geral | Título do formulário de identificação |
 | Duração da sessão | `pressao_session_duration` | Geral | TTL dos cookies em segundos (padrão `86400`) |
-| Candidatos a pressionar | `pressao_candidatos` | Candidatos | Lista AJAX (busca/paginação); usada na busca do `[pressao_fluxo]` |
+| Candidatos a pressionar | `pressao_candidatos` | Candidatos | Lista AJAX (busca/paginação); usada na busca e no filtro por estado do `[pressao_fluxo]` |
+| Índice de filtros | `pressao_candidatos_filtros` | Candidatos | Gerado (não editável): estados e cargos do “Filtre por estado”; recalculado a cada gravação de `pressao_candidatos` ou pelo botão **Regenerar filtros** |
 | Limite de marcação (fluxo) | `pressao_fluxo_limite_candidatos` | Candidatos | Máximo de @ por mensagem (padrão `5`) — salvo pelo botão Salvar da aba |
 | Contador antes de abrir IG | `pressao_fluxo_countdown_abrir` | Candidatos | Se ligado: toast com countdown antes de abrir; se desligado (padrão): abre no clique. Mobile tenta o app; desktop abre nova aba |
 | Ajuda do fluxo | `pressao_fluxo_ajuda` | Candidatos | Título + conteúdo HTML do modal `?` no `[pressao_fluxo]` |
@@ -173,7 +175,7 @@ Há **duas bases** no WordPress:
 
 No admin, as duas listas usam o **mesmo padrão de listagem** (`PressaoPlugin_Candidatos_Admin_List`):
 
-- Tabela com colunas: foto, nome, cargo, partido, Instagram
+- Tabela com colunas: foto, nome, cargo, partido, Instagram (+ **estado** só na base a pressionar)
 - Clique / **Editar** expande o formulário na linha; **Salvar item** grava via AJAX
 - Busca (`cs`) e paginação (`cpage`, 20 por página) no servidor
 - Actions: `pressao_candidato_save`, `pressao_candidato_delete`, `pressao_candidato_add`
@@ -186,10 +188,20 @@ Campos por candidato (iguais nas duas):
 - `descricao`
 - `link_url` — **Instagram (@)** (handle; aceita `@user` ou URL de perfil; sanitizado no save)
 - `imagem_id`
+- `estado` — sigla UF (select das 27 UFs; só editável na base **a pressionar**; valor inválido vira vazio)
 
 As imagens manuais usam a Biblioteca de Mídia do WordPress (`attachment ID` + `wp_get_attachment_image()`).
 
 No `[pressao_fluxo]`, os handles da base **a pressionar** entram na mensagem (`@a, @b …` + template do alvo). O limite de seleção vem de `pressao_fluxo_limite_candidatos`. Contagens do botão/lista usam a base **apoiadores**.
+
+#### Filtro por estado (`pressao_candidatos_filtros`)
+
+O “Filtre por estado” do `[pressao_fluxo]` usa um índice pré-calculado (`PressaoPlugin_Candidatos_Filtros`), para o render não percorrer a lista:
+
+- Só estados com pelo menos um candidato (com `@`), ordenados pelo nome.
+- Cargos = distinct do texto `cargo` **por estado**, agrupado ignorando maiúsculas, acentos e espaços extras; o rótulo é a primeira grafia encontrada. Cargo vazio não vira opção.
+- Regenerado automaticamente nos hooks `add_option_pressao_candidatos` / `update_option_pressao_candidatos` (salvar, adicionar ou remover item). Na aba **Candidatos**, o bloco **Filtros por estado** mostra o resumo e o botão **Regenerar filtros** (`admin-post` `pressao_regenerar_filtros`).
+- Candidatos sem estado aparecem só na busca por nome.
 
 #### Import CSV (apoiadores)
 
@@ -392,6 +404,8 @@ Renderiza os candidatos da option `pressao_candidatos_apoiadores` (já apoiam a 
 ### `[pressao_fluxo]` — fluxo único sequencial (Instagram v1)
 
 Wizard isolado de `[pressao_alvos]`: seleção de candidatos → copiar/abrir Instagram → confirmação humana → formulário de newsletter → compartilhar. **Cria e confirma a ação na API apenas na saída do formulário** (“Quero receber atualizações” com dados, ou “Agora não” sem ativista). Telas pós-Continuar são bloqueantes (sem dismiss por backdrop/Escape); no **mobile** abrem como **drawer tela cheia** (entra da direita, como o overlay de ação — distinto do bottom sheet da lista de candidatos); no desktop a troca continua inline no card. A lista de candidatos fecha no X ou backdrop.
+
+**Seleção de candidatos:** duas opções em acordeão (só uma aberta por vez). **Busque ou selecione candidatos** (aberta por padrão) é o autocomplete por nome/@. **Filtre por estado** tem checkboxes de cargo opcionais (cargos daquele estado; nenhum marcado = todos, marcados = união), select de estado e um segundo autocomplete desabilitado até escolher o estado. Trocar estado/cargo remove só os selecionados que não batem mais. Ao começar a preencher uma opção, o que foi preenchido na outra é limpo. O “Continuar” usa os selecionados da opção aberta. Opções do autocomplete mostram nome + `@handle · cargo · partido`. Sem nenhum candidato com estado, só a busca aparece.
 
 **Abrir Instagram:** no mobile, “Copiar e abrir” tenta o **app** (Android Intent / iOS Universal Link) **sem nova aba**, para o X/voltar do app devolver à tela de confirmação do fluxo; no desktop abre a URL HTTPS em nova aba. A option `pressao_fluxo_countdown_abrir` (toast antes de abrir) permanece opcional.
 

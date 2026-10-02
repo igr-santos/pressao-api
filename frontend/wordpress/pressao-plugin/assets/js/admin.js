@@ -28,6 +28,7 @@
             nome: $fields.find('[data-field="nome"]').val() || '',
             cargo: $fields.find('[data-field="cargo"]').val() || '',
             partido: $fields.find('[data-field="partido"]').val() || '',
+            estado: $fields.find('[data-field="estado"]').val() || '',
             link_url: $fields.find('[data-field="link_url"]').val() || '',
             descricao: $fields.find('[data-field="descricao"]').val() || '',
             imagem_id: $fields.find('[data-field="imagem_id"]').val() || '0'
@@ -38,6 +39,7 @@
         $row.find('[data-field="nome"]').text(item.nome || '');
         $row.find('[data-field="cargo"]').text(item.cargo || '');
         $row.find('[data-field="partido"]').text(item.partido || '');
+        $row.find('[data-field="estado"]').text(item.estado || '');
         $row.find('[data-field="link_url"]').text(item.link_url || '');
 
         const $thumb = $row.find('.pressao-admin-list-thumb');

@@ -72,11 +72,14 @@ class PressaoPlugin_Candidatos_Admin_List {
             if (!is_array($item)) {
                 continue;
             }
+            $uf = PressaoPlugin_Candidatos_Filtros::sanitize_uf($item['estado'] ?? '');
             $haystack = implode(' ', [
                 (string) ($item['nome'] ?? ''),
                 (string) ($item['cargo'] ?? ''),
                 (string) ($item['partido'] ?? ''),
                 (string) ($item['link_url'] ?? ''),
+                $uf,
+                $uf !== '' ? PressaoPlugin_Candidatos_Filtros::UFS[$uf] : '',
             ]);
             $haystack = function_exists('mb_strtolower')
                 ? mb_strtolower($haystack, 'UTF-8')
@@ -140,7 +143,7 @@ class PressaoPlugin_Candidatos_Admin_List {
      * Sanitiza um item (permite vazio — rascunho na listagem admin).
      *
      * @param mixed $candidato
-     * @return array{nome: string, cargo: string, partido: string, descricao: string, link_url: string, imagem_id: int}
+     * @return array{nome: string, cargo: string, partido: string, estado: string, descricao: string, link_url: string, imagem_id: int}
      */
     public static function sanitize_item($candidato) {
         if (!is_array($candidato)) {
@@ -151,6 +154,7 @@ class PressaoPlugin_Candidatos_Admin_List {
             'nome' => sanitize_text_field($candidato['nome'] ?? ''),
             'cargo' => sanitize_text_field($candidato['cargo'] ?? ''),
             'partido' => sanitize_text_field($candidato['partido'] ?? ''),
+            'estado' => PressaoPlugin_Candidatos_Filtros::sanitize_uf($candidato['estado'] ?? ''),
             'descricao' => sanitize_textarea_field($candidato['descricao'] ?? ''),
             'link_url' => self::sanitize_instagram_handle($candidato['link_url'] ?? ''),
             'imagem_id' => absint($candidato['imagem_id'] ?? 0),
@@ -303,6 +307,8 @@ class PressaoPlugin_Candidatos_Admin_List {
         }
 
         $tab = self::tab_for_option($option_name);
+        $com_estado = ($option_name === self::OPTION_PRESSIONAR);
+        $colspan = $com_estado ? 7 : 6;
         $search = isset($_GET['cs']) ? sanitize_text_field(wp_unslash($_GET['cs'])) : '';
         $page = isset($_GET['cpage']) ? max(1, absint($_GET['cpage'])) : 1;
         $expand = isset($_GET['expand']) ? (int) $_GET['expand'] : -1;
@@ -367,6 +373,9 @@ class PressaoPlugin_Candidatos_Admin_List {
                         <th scope="col"><?php esc_html_e('Nome', 'pressao-plugin'); ?></th>
                         <th scope="col"><?php esc_html_e('Cargo', 'pressao-plugin'); ?></th>
                         <th scope="col"><?php esc_html_e('Partido', 'pressao-plugin'); ?></th>
+                        <?php if ($com_estado) : ?>
+                            <th scope="col"><?php esc_html_e('Estado', 'pressao-plugin'); ?></th>
+                        <?php endif; ?>
                         <th scope="col"><?php esc_html_e('Instagram', 'pressao-plugin'); ?></th>
                         <th scope="col" class="column-actions"><?php esc_html_e('Ações', 'pressao-plugin'); ?></th>
                     </tr>
@@ -374,7 +383,7 @@ class PressaoPlugin_Candidatos_Admin_List {
                 <tbody>
                     <?php if (empty($paged['items'])) : ?>
                         <tr class="pressao-admin-list-empty">
-                            <td colspan="6">
+                            <td colspan="<?php echo esc_attr((string) $colspan); ?>">
                                 <?php
                                 echo $search !== ''
                                     ? esc_html__('Nenhum candidato encontrado para esta busca.', 'pressao-plugin')
@@ -404,6 +413,9 @@ class PressaoPlugin_Candidatos_Admin_List {
                                 <td class="column-nome" data-field="nome"><?php echo esc_html($candidato['nome'] ?? ''); ?></td>
                                 <td class="column-cargo" data-field="cargo"><?php echo esc_html($candidato['cargo'] ?? ''); ?></td>
                                 <td class="column-partido" data-field="partido"><?php echo esc_html($candidato['partido'] ?? ''); ?></td>
+                                <?php if ($com_estado) : ?>
+                                    <td class="column-estado" data-field="estado"><?php echo esc_html(PressaoPlugin_Candidatos_Filtros::sanitize_uf($candidato['estado'] ?? '')); ?></td>
+                                <?php endif; ?>
                                 <td class="column-instagram" data-field="link_url"><?php echo esc_html($candidato['link_url'] ?? ''); ?></td>
                                 <td class="column-actions">
                                     <button type="button" class="button-link pressao-admin-list-toggle">
@@ -418,8 +430,8 @@ class PressaoPlugin_Candidatos_Admin_List {
                             <tr class="pressao-admin-list-editor<?php echo $is_expanded ? ' is-open' : ''; ?>"
                                 data-index="<?php echo esc_attr((string) $index); ?>"
                                 <?php echo $is_expanded ? '' : 'hidden'; ?>>
-                                <td colspan="6">
-                                    <?php self::render_editor_fields($candidato, (int) $index); ?>
+                                <td colspan="<?php echo esc_attr((string) $colspan); ?>">
+                                    <?php self::render_editor_fields($candidato, (int) $index, $com_estado); ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -462,8 +474,10 @@ class PressaoPlugin_Candidatos_Admin_List {
     /**
      * @param array $candidato
      * @param int   $index
+     * @param bool  $com_estado
      */
-    private static function render_editor_fields(array $candidato, $index) {
+    private static function render_editor_fields(array $candidato, $index, $com_estado = false) {
+        $estado_atual = PressaoPlugin_Candidatos_Filtros::sanitize_uf($candidato['estado'] ?? '');
         $imagem_id = absint($candidato['imagem_id'] ?? 0);
         $imagem_url = $imagem_id ? wp_get_attachment_image_url($imagem_id, 'thumbnail') : '';
         ?>
@@ -496,6 +510,21 @@ class PressaoPlugin_Candidatos_Admin_List {
                                value="<?php echo esc_attr($candidato['partido'] ?? ''); ?>" />
                     </label>
                 </p>
+                <?php if ($com_estado) : ?>
+                    <p>
+                        <label>
+                            <?php esc_html_e('Estado', 'pressao-plugin'); ?><br>
+                            <select data-field="estado">
+                                <option value=""><?php esc_html_e('—', 'pressao-plugin'); ?></option>
+                                <?php foreach (PressaoPlugin_Candidatos_Filtros::UFS as $uf => $nome_uf) : ?>
+                                    <option value="<?php echo esc_attr($uf); ?>" <?php selected($estado_atual, $uf); ?>>
+                                        <?php echo esc_html($uf . ' — ' . $nome_uf); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </p>
+                <?php endif; ?>
                 <p>
                     <label>
                         <?php esc_html_e('Instagram (@)', 'pressao-plugin'); ?><br>

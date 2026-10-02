@@ -63,6 +63,7 @@ final class PressaoPlugin {
     private function load_dependencies() {
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-main.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-admin.php';
+        require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-filtros.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-admin-list.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-import.php';
         require_once PRESSAO_PLUGIN_DIR . 'includes/class-candidatos-rest.php';
@@ -103,6 +104,7 @@ final class PressaoPlugin {
             'pressao_widget_title' => 'Pressão Widget',
             'pressao_candidatos' => [],
             'pressao_candidatos_apoiadores' => [],
+            'pressao_candidatos_filtros' => [],
             'pressao_fluxo_limite_candidatos' => 5,
             'pressao_fluxo_countdown_abrir' => 0,
             'pressao_fluxo_ajuda' => [

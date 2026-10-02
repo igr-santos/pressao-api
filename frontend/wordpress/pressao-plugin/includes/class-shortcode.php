@@ -954,6 +954,11 @@ class PressaoPlugin_Shortcode {
         $apoiadores_raw = get_option('pressao_candidatos_apoiadores', []);
         $apoiadores = $this->normalize_candidatos_for_fluxo($apoiadores_raw, 'a');
 
+        $filtros_index = PressaoPlugin_Candidatos_Filtros::get_index();
+        $filtros_estados = isset($filtros_index['estados']) && is_array($filtros_index['estados'])
+            ? $filtros_index['estados']
+            : [];
+
         $share_config = $this->get_compartilhamento_config_for_render(false);
         if (!$share_config) {
             $share_config = [
@@ -981,6 +986,7 @@ class PressaoPlugin_Shortcode {
             'countdown_abrir' => (bool) get_option('pressao_fluxo_countdown_abrir', 0),
             'candidatos' => $candidatos,
             'apoiadores' => $apoiadores,
+            'filtros' => $filtros_estados,
             'acoes_confirmadas' => $acoes_count,
             'alvo_nome' => $alvo_nome,
             'share' => $share_config,
@@ -1057,34 +1063,98 @@ class PressaoPlugin_Shortcode {
                     </div>
 
                     <div class="pressao-fluxo-right">
-                        <div class="pressao-fluxo-search-block">
-                            <label class="pressao-fluxo-field-label" for="<?php echo esc_attr($atts['id']); ?>-select">
-                                <?php esc_html_e('Busque ou selecione candidatos', 'pressao-plugin'); ?>
-                            </label>
-                            <select id="<?php echo esc_attr($atts['id']); ?>-select"
-                                    class="pressao-fluxo-select"
-                                    multiple
-                                    data-fluxo-select
-                                    placeholder="<?php esc_attr_e('Nome do candidato ou @ do Instagram', 'pressao-plugin'); ?>">
-                                <?php foreach ($candidatos as $candidato) : ?>
-                                    <?php if (empty($candidato['instagram'])) { continue; } ?>
-                                    <option value="<?php echo esc_attr($candidato['id']); ?>"
-                                            data-instagram="<?php echo esc_attr($candidato['instagram']); ?>"
-                                            data-imagem="<?php echo esc_attr($candidato['imagem']); ?>">
-                                        <?php echo esc_html(trim(($candidato['nome'] ? $candidato['nome'] . ' ' : '') . $candidato['instagram'])); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="pressao-fluxo-limit-hint">
-                                <span class="pressao-fluxo-limit-hint-icon" aria-hidden="true"></span>
-                                <?php
-                                echo esc_html(sprintf(
-                                    /* translators: %d: max candidates */
-                                    __('Você pode selecionar até %d candidatos por vez', 'pressao-plugin'),
-                                    $limite
-                                ));
-                                ?>
-                            </p>
+                        <?php
+                        $limit_hint = sprintf(
+                            /* translators: %d: max candidates */
+                            __('Você pode selecionar até %d candidatos por vez', 'pressao-plugin'),
+                            $limite
+                        );
+                        $com_filtro_estado = !empty($filtros_estados);
+                        $modo_id = $atts['id'] . '-modo';
+                        ?>
+                        <div class="pressao-fluxo-search-block pressao-fluxo-modos" data-fluxo-modos>
+                            <section class="pressao-fluxo-modo is-open" data-fluxo-modo="busca">
+                                <?php if ($com_filtro_estado) : ?>
+                                    <button type="button"
+                                            class="pressao-fluxo-modo-toggle"
+                                            id="<?php echo esc_attr($modo_id); ?>-busca-toggle"
+                                            aria-expanded="true"
+                                            aria-controls="<?php echo esc_attr($modo_id); ?>-busca"
+                                            data-fluxo-modo-toggle="busca">
+                                        <span><?php esc_html_e('Busque ou selecione candidatos', 'pressao-plugin'); ?></span>
+                                        <span class="pressao-fluxo-modo-chevron" aria-hidden="true"></span>
+                                    </button>
+                                <?php else : ?>
+                                    <label class="pressao-fluxo-field-label" for="<?php echo esc_attr($atts['id']); ?>-select">
+                                        <?php esc_html_e('Busque ou selecione candidatos', 'pressao-plugin'); ?>
+                                    </label>
+                                <?php endif; ?>
+                                <div class="pressao-fluxo-modo-body" id="<?php echo esc_attr($modo_id); ?>-busca">
+                                    <select id="<?php echo esc_attr($atts['id']); ?>-select"
+                                            class="pressao-fluxo-select"
+                                            multiple
+                                            data-fluxo-select
+                                            <?php if ($com_filtro_estado) : ?>aria-labelledby="<?php echo esc_attr($modo_id); ?>-busca-toggle"<?php endif; ?>
+                                            placeholder="<?php esc_attr_e('Nome do candidato ou @ do Instagram', 'pressao-plugin'); ?>">
+                                        <?php foreach ($candidatos as $candidato) : ?>
+                                            <?php if (empty($candidato['instagram'])) { continue; } ?>
+                                            <option value="<?php echo esc_attr($candidato['id']); ?>">
+                                                <?php echo esc_html(trim(($candidato['nome'] ? $candidato['nome'] . ' ' : '') . $candidato['instagram'])); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="pressao-fluxo-limit-hint">
+                                        <span class="pressao-fluxo-limit-hint-icon" aria-hidden="true"></span>
+                                        <?php echo esc_html($limit_hint); ?>
+                                    </p>
+                                </div>
+                            </section>
+
+                            <?php if ($com_filtro_estado) : ?>
+                                <p class="pressao-fluxo-modos-ou"><?php esc_html_e('ou então', 'pressao-plugin'); ?></p>
+
+                                <section class="pressao-fluxo-modo" data-fluxo-modo="estado">
+                                    <button type="button"
+                                            class="pressao-fluxo-modo-toggle"
+                                            id="<?php echo esc_attr($modo_id); ?>-estado-toggle"
+                                            aria-expanded="false"
+                                            aria-controls="<?php echo esc_attr($modo_id); ?>-estado"
+                                            data-fluxo-modo-toggle="estado">
+                                        <span><?php esc_html_e('Filtre por estado', 'pressao-plugin'); ?></span>
+                                        <span class="pressao-fluxo-modo-chevron" aria-hidden="true"></span>
+                                    </button>
+                                    <div class="pressao-fluxo-modo-body" id="<?php echo esc_attr($modo_id); ?>-estado" hidden>
+                                        <fieldset class="pressao-fluxo-cargos" data-fluxo-cargos hidden>
+                                            <legend class="screen-reader-text"><?php esc_html_e('Cargo', 'pressao-plugin'); ?></legend>
+                                            <span class="pressao-fluxo-cargos-list" data-fluxo-cargos-list></span>
+                                            <span class="pressao-fluxo-cargos-opcional"><?php esc_html_e('(opcional)', 'pressao-plugin'); ?></span>
+                                        </fieldset>
+                                        <label class="screen-reader-text" for="<?php echo esc_attr($atts['id']); ?>-estado">
+                                            <?php esc_html_e('Estado', 'pressao-plugin'); ?>
+                                        </label>
+                                        <select id="<?php echo esc_attr($atts['id']); ?>-estado"
+                                                class="pressao-fluxo-estado-select"
+                                                data-fluxo-estado>
+                                            <option value=""><?php esc_html_e('Selecione um estado', 'pressao-plugin'); ?></option>
+                                            <?php foreach ($filtros_estados as $estado) : ?>
+                                                <option value="<?php echo esc_attr($estado['uf']); ?>"><?php echo esc_html($estado['nome']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <select id="<?php echo esc_attr($atts['id']); ?>-select-estado"
+                                                class="pressao-fluxo-select"
+                                                multiple
+                                                disabled
+                                                data-fluxo-select-estado
+                                                aria-label="<?php esc_attr_e('Candidatos do estado', 'pressao-plugin'); ?>"
+                                                placeholder="<?php esc_attr_e('Nome do candidato ou @ do Instagram', 'pressao-plugin'); ?>">
+                                        </select>
+                                        <p class="pressao-fluxo-limit-hint">
+                                            <span class="pressao-fluxo-limit-hint-icon" aria-hidden="true"></span>
+                                            <?php echo esc_html($limit_hint); ?>
+                                        </p>
+                                    </div>
+                                </section>
+                            <?php endif; ?>
                         </div>
 
                         <button type="button" class="pressao-fluxo-btn pressao-fluxo-btn-primary" data-fluxo-continuar>
@@ -1289,7 +1359,9 @@ class PressaoPlugin_Shortcode {
                 'id' => $id_prefix . $index,
                 'nome' => $candidato['nome'] ?? '',
                 'cargo' => $candidato['cargo'] ?? '',
+                'cargo_chave' => PressaoPlugin_Candidatos_Filtros::normalize_cargo($candidato['cargo'] ?? ''),
                 'partido' => $candidato['partido'] ?? '',
+                'estado' => PressaoPlugin_Candidatos_Filtros::sanitize_uf($candidato['estado'] ?? ''),
                 'instagram' => $handle,
                 'imagem' => $imagem_url ? $imagem_url : '',
             ];
