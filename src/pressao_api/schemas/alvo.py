@@ -58,12 +58,19 @@ class AlvoUpdate(BaseModel):
     ativo: bool | None = None
 
 
+class AlvoMembroPublico(BaseModel):
+    nome: str
+
+
 class AlvoResponse(AlvoBase):
     id: UUID4
     campanha_id: UUID4
     modo: ModoAlvo = ModoAlvo.INDIVIDUAL
     total_membros: int | None = Field(
         None, description="Quantidade de membros (apenas alvo agregado de e-mail)"
+    )
+    membros: list[AlvoMembroPublico] | None = Field(
+        None, description="Membros ativos, só com nome (apenas alvo agregado de e-mail)"
     )
     criado_em: datetime
     atualizado_em: datetime

@@ -107,6 +107,7 @@ class TestAPIAlvo:
         assert len(data) == 1
         assert data[0]["modo"] == "agregado"
         assert data[0]["total_membros"] == 3
+        assert data[0]["membros"] == [{"nome": "Alvo 0"}, {"nome": "Alvo 1"}, {"nome": "Alvo 2"}]
 
     def test_buscar_alvo_por_id(self, client, db_session, mock_user, campanha):
         """Busca alvo por ID"""

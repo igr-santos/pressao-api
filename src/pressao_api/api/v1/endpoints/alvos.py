@@ -11,7 +11,7 @@ from pressao_api.repositories.alvo_repository import AlvoRepository
 from pressao_api.repositories.campanha_repository import CampanhaRepository
 from pressao_api.repositories.template_repository import TemplateRepository
 from pressao_api.schemas.acao import CanalEnum
-from pressao_api.schemas.alvo import AlvoCreate, AlvoResponse, AlvoUpdate
+from pressao_api.schemas.alvo import AlvoCreate, AlvoMembroPublico, AlvoResponse, AlvoUpdate
 from pressao_api.schemas.template import TemplateSorteadoResponse
 from pressao_api.services.alvo_agregado import AlvoAgregadoService
 from pressao_api.services.templates import sortear_template
@@ -29,11 +29,14 @@ def _montar_resposta_com_template(
     alvo: Alvo,
     templates_por_canal: dict[str, list[Template]],
     total_membros: int | None = None,
+    membros: list[str] | None = None,
 ) -> AlvoResponse:
     """Monta a resposta do alvo sorteando template para canais que suportam preview."""
     resposta = AlvoResponse.model_validate(alvo)
     if total_membros is not None:
         resposta.total_membros = total_membros
+    if membros is not None:
+        resposta.membros = [AlvoMembroPublico(nome=nome) for nome in membros]
 
     canal_template = CANAIS_COM_TEMPLATE.get(alvo.tipo_contato)
     if not canal_template:
@@ -100,10 +103,14 @@ async def listar_alvos_por_campanha(
     respostas: list[AlvoResponse] = []
     for alvo in alvos:
         total_membros = None
+        membros = None
         if alvo.modo == ModoAlvo.AGREGADO:
             total_membros = await agregado_service.contar_membros_agregado(alvo.id)
+            membros = await agregado_service.listar_nomes_membros(alvo.id)
         respostas.append(
-            _montar_resposta_com_template(alvo, templates_por_canal, total_membros=total_membros)
+            _montar_resposta_com_template(
+                alvo, templates_por_canal, total_membros=total_membros, membros=membros
+            )
         )
     return respostas
 
@@ -129,11 +136,15 @@ async def obter_alvo(
         )
 
     total_membros = None
+    membros = None
     if alvo.modo == ModoAlvo.AGREGADO:
         agregado_service = AlvoAgregadoService(db)
         total_membros = await agregado_service.contar_membros_agregado(alvo.id)
+        membros = await agregado_service.listar_nomes_membros(alvo.id)
 
-    return _montar_resposta_com_template(alvo, templates_por_canal, total_membros=total_membros)
+    return _montar_resposta_com_template(
+        alvo, templates_por_canal, total_membros=total_membros, membros=membros
+    )
 
 
 @router.put("/{alvo_id}", response_model=AlvoResponse)

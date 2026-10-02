@@ -85,3 +85,8 @@ class AlvoAgregadoService:
 
     async def contar_membros_agregado(self, agregado_id: UUID) -> int:
         return await self.membro_repo.contar_membros(agregado_id)
+
+    async def listar_nomes_membros(self, agregado_id: UUID) -> list[str]:
+        """Nomes dos membros ativos do agregado, em ordem alfabética (sem contatos)."""
+        membros = await self.membro_repo.listar_membros_alvos(agregado_id)
+        return sorted((m.nome for m in membros), key=str.casefold)
