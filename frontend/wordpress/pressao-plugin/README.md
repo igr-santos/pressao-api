@@ -81,25 +81,31 @@ pressao-plugin/
 │   ├── class-apoiadores-imagens-fila.php  # Fila de imagens do CSV (lotes via AJAX + progresso)
 │   ├── class-candidatos-rest.php    # REST pressao/v1/candidatos-apoiadores
 │   ├── class-api.php           # Cliente HTTP: Keycloak + API Pressão
+│   ├── class-render-helpers.php  # Helpers de render comuns (candidatos, avatares, compartilhar, ajuda, cookie, campos do ativista)
 │   ├── class-shortcode.php     # Shortcodes e renderização SSR
+│   ├── class-multicanal.php    # [pressao_multicanal]: widget padrão (Instagram, TikTok, e-mail, compartilhar)
 │   └── class-ajax.php          # AJAX handlers
 ├── assets/
 │   ├── css/
 │   │   ├── admin.css           # Tabs, cards de ferramentas, callout LGPD
 │   │   ├── style.css           # Tokens, mask-image dos ícones, @font-face
-│   │   └── fluxo.css           # UI do shortcode [pressao_fluxo]
+│   │   ├── pressao-ui.css      # Base comum de fluxo/multicanal: @font-face, tokens (--fluxo-*, --pressao-ui-*), ícones
+│   │   ├── fluxo.css           # UI do shortcode [pressao_fluxo] (depende de pressao-ui.css)
+│   │   └── multicanal.css      # UI do [pressao_multicanal] (prefixo pressao-mc-*, depende de pressao-ui.css)
 │   ├── fonts/                  # Anton + Host_Grotesk (fluxo); NeueHaas*.woff* opcional p/ alvos
 │   │   ├── Anton/
 │   │   ├── Host_Grotesk/
 │   │   └── Funnel_Display/     # presente; não usada no [pressao_fluxo]
-│   ├── icons/                  # SVG de canais, compartilhar, copiar, download, seta e raio (via CSS mask-image)
+│   ├── icons/                  # SVG de canais (inclui x), compartilhar/enviar, copiar, download, setas, check, fechar, chevron, localização, interrogação e raio (via CSS mask-image; URLs absolutas injetadas como --pressao-icon-*)
 │   ├── vendor/tom-select/      # Autocomplete do fluxo único (+ remoção no admin)
 │   ├── examples/               # CSV + scripts REST (apoiadores)
 │   └── js/
 │       ├── admin.js            # Campos repetíveis, CSV/remoção apoiadores, Media Library
 │       ├── share-images.js     # Download blob / Web Share das “Imagens para postar”
-│       ├── widget.js           # UI, cookies, ações, compartilhamento e confirmações ([pressao_alvos])
-│       └── fluxo.js            # Wizard sequencial isolado ([pressao_fluxo])
+│       ├── pressao-core.js     # Módulo comum window.PressaoCore (cookies, AJAX, ações, abrir app, compartilhar)
+│       ├── widget.js           # UI, cookies, ações, compartilhamento e confirmações ([pressao_alvos], legado)
+│       ├── fluxo.js            # Wizard sequencial isolado ([pressao_fluxo]); usa pressao-core.js
+│       └── multicanal.js       # Widget padrão [pressao_multicanal]; usa pressao-core.js
 └── views/
     └── widget-template.php
 ```
@@ -329,9 +335,65 @@ docker compose exec wordpress php -l wp-content/plugins/pressao-plugin/includes/
 
 Os shortcodes ligados à campanha aceitam `campaign` e caem em `pressao_campaign_id` quando o atributo é omitido. O shortcode `[pressao_candidatos]` é editorial e usa a base **apoiadores** (`pressao_candidatos_apoiadores`).
 
-### `[pressao_alvos]` — lista de alvos com botão de ação
+### `[pressao_multicanal]` — widget padrão multicanal
 
-Principal shortcode do plugin: lista os alvos da campanha e permite agir por canal.
+Shortcode recomendado para campanhas: uma home com os canais da campanha (Instagram, TikTok, e-mail) e o
+compartilhamento, seguindo o Figma "Widget padrão". Mobile em drawer de tela cheia; desktop em card de duas
+colunas (hero à esquerda, etapas no painel direito, modais centralizados).
+
+```text
+[pressao_multicanal campaign="uuid" canais="instagram,tiktok,email" countdown="3" redes="whatsapp,x,instagram"]
+```
+
+**Cards:** só entram os canais que têm alvo na API, na ordem de `canais`. Qualquer ordem é permitida; a seta
+preenchida só sugere o próximo canal pendente. Estados: feito (verde), pulado com "Não uso" (cinza; clicar
+reabre o canal) e pendente.
+
+**Instagram/TikTok:** chips com todos os `@` de `pressao_candidatos`, mensagem `@a, @b` + template do alvo,
+"Copiar e abrir" (modal "Mensagem copiada!" com "Abrindo em N...") e confirmação "Sim, já publiquei!". A ação
+é criada e confirmada só no fim do canal, depois da captação de lead.
+
+**Captação de lead** ("Quer acompanhar os próximos passos?"): aparece só se ainda não pedimos e-mail (sem
+`__lead` no cookie, sem e-mail em `pressao_ativista_data` e e-mail não feito). Modal no desktop, tela cheia no
+mobile. "Agora não" registra a ação sem ativista.
+
+**E-mail:** "Para" com os nomes de `membros` do alvo agregado (API; sem o campo, "N destinatários"), "Assunto"
+= título do template, "Ver Texto" com o corpo e formulário nome/e-mail/WhatsApp. O envio cria a ação
+(`canal=email`) com o ativista.
+
+**Feedback:** "Legal, sua pressão já está valendo!" por 1 s; depois volta para a home ou, sem canal pendente,
+abre o compartilhar ("Convide mais pessoas": copiar link, redes de `redes`, imagens para postar).
+
+| Atributo | Padrão | Descrição |
+|----------|--------|-----------|
+| `campaign` | option | ID da campanha |
+| `canais` | `instagram,tiktok,email` | Canais e ordem dos cards |
+| `alvo_instagram` / `alvo_tiktok` / `alvo_email` | — | Alvo de cada card. Vazio: primeiro alvo do canal; no e-mail, o agregado |
+| `cache` | `0` | TTL do cache de alvos (`0` sorteia template a cada visita) |
+| `alvos` | `candidatos` | Palavra usada no título padrão e na lista ("Candidatos que serão pressionados") |
+| `selo` | `Faça sua cobrança aos candidatos` | Pílula do topo (vazio esconde) |
+| `title` | `Pressione os {alvos} pela {campanha}` | Título; `{alvos}` e `{campanha}` (nome da campanha na API) são substituídos |
+| `subtitle` | `Marque quem ainda não se comprometeu e ajude a fortalecer o movimento.` | Subtítulo |
+| `progresso` | `1` | `0` remove a barra "Etapas que você já fez" |
+| `countdown` | `3` | Segundos de "Abrindo em N..." antes de abrir o app; `0` abre após 1,5 s |
+| `tempo_instagram` / `tempo_tiktok` / `tempo_email` | `2 min` / `2 min` / `1 min` | Tempo exibido nos cards |
+| `ajuda_titulo` / `ajuda` | `Como funciona?` / texto padrão | Modal `?`. Sem `ajuda`, usa o conteúdo de `pressao_fluxo_ajuda` se preenchido |
+| `redes` | `whatsapp,x,instagram` | Redes do compartilhar (aceita também `messenger`) |
+| `class` / `id` | — / gerado | Classe CSS extra e ID do container |
+
+Assets: `pressao-ui.css` + `multicanal.css` + `pressao-core.js` + `share-images.js` + `multicanal.js` (só
+quando o shortcode está na página). Reusa AJAX `pressao_realizar_acao` / `pressao_confirmar_acao`. Contador
+`.pressao-acoes-counter` animado por `PressaoCore.updateCounter`.
+
+### Shortcodes legados
+
+`[pressao_alvos]`, `[pressao_contador]`, `[pressao_progresso]` e `[pressao_candidatos]` continuam
+funcionando sem mudanças, mas não recebem novas funcionalidades; para campanhas novas use
+`[pressao_multicanal]`. `[pressao_widget]`, `[pressao_form]` e `[pressao_list]` são containers antigos.
+
+### `[pressao_alvos]` — lista de alvos com botão de ação (legado)
+
+Lista os alvos da campanha e permite agir por canal.
 
 **E-mail:** a API agrupa todos os contatos de e-mail da campanha em um único item (`modo=agregado`, nome padrão "Pressionar por E-mail"). Um clique dispara a ação `multi_alvo` para todos os destinatários. O campo `total_membros` indica quantos e-mails serão pressionados. Use `action_label="Pressionar por E-mail"` para o rótulo do botão.
 
@@ -370,7 +432,7 @@ deep links WhatsApp/Instagram/Messenger e download/share de imagens (`share-imag
 | `ativista_confirm_yes` | `Sou eu` | Rótulo de confirmação |
 | `ativista_confirm_no` | `Não sou eu` | Rótulo que limpa os dados da sessão |
 
-### `[pressao_contador]` — total de ações confirmadas
+### `[pressao_contador]` — total de ações confirmadas (legado)
 
 Lê `acoes_confirmadas` da campanha (transient de 60s) e anima o número via countUp quando o ativista conclui uma ação na mesma página.
 
@@ -384,21 +446,21 @@ Lê `acoes_confirmadas` da campanha (transient de 60s) e anima o número via cou
 | `label` | `ações confirmadas` | Texto ao lado do número |
 | `class` / `id` | — / gerado | Classe CSS extra e ID do container |
 
-### `[pressao_progresso]` — progresso pessoal do ativista
+### `[pressao_progresso]` — progresso pessoal do ativista (legado)
 
 Barra `done / total` de alvos baseada no cookie `pressao_acoes_realizadas`. Conta ações **realizadas**: canais automáticos entram na hora, manuais só após a confirmação.
 
 ```text
-[pressao_progresso campaign="uuid" label="seu progresso"]
+[pressao_progresso campaign="uuid" label="Pressione para impactar"]
 ```
 
 | Atributo | Padrão | Descrição |
 |----------|--------|-----------|
 | `campaign` | option | ID da campanha |
-| `label` | `seu progresso` | Texto da barra |
+| `label` | `Pressione para impactar` | Texto da barra |
 | `class` / `id` | — / gerado | Classe CSS extra e ID do container |
 
-### `[pressao_candidatos]` — bloco de candidatos apoiadores
+### `[pressao_candidatos]` — bloco de candidatos apoiadores (legado)
 
 Renderiza os candidatos da option `pressao_candidatos_apoiadores` (já apoiam a pauta).
 
@@ -431,10 +493,10 @@ Wizard isolado de `[pressao_alvos]`: seleção de candidatos → copiar/abrir In
 | `campaign` | option | ID da campanha |
 | `template_id` | template do alvo | Fallback se a API não devolver template |
 | `title` / `subtitle` | copy do layout | Textos da tela inicial |
-| `cache` | `300` | TTL do cache de alvos |
+| `cache` | `0` | TTL do cache de alvos (`0` sorteia template a cada visita) |
 | `class` / `id` | — / gerado | Classe CSS extra e ID do container |
 
-Assets: `fluxo.js` + `fluxo.css` + `share-images.js` + Tom Select (só quando o shortcode está na página). Reusa AJAX `pressao_realizar_acao` / `pressao_confirmar_acao`.
+Assets: `pressao-core.js` + `fluxo.js` + `pressao-ui.css` + `fluxo.css` + `share-images.js` + Tom Select (só quando o shortcode está na página). Reusa AJAX `pressao_realizar_acao` / `pressao_confirmar_acao`.
 
 ### `[pressao_widget]` — widget principal
 
@@ -486,7 +548,7 @@ Todos usam o TTL de `pressao_session_duration` e são limpos de uma vez por `cle
 | `pressao_sessao_id` | UUID v4 da sessão do navegador |
 | `pressao_ativista_data` | Nome, email e telefone do ativista (JSON) |
 | `pressao_ativista_last_confirm` | Timestamp da última confirmação de identidade |
-| `pressao_acoes_realizadas` | Mapa `alvoId → {timestamp, acao_id, status, user_id}` — fonte de verdade do progresso e do estado SSR. Inclui a chave sintética `__compartilhar` quando o ativista compartilha (sem `acao_id`) |
+| `pressao_acoes_realizadas` | Mapa `alvoId → {timestamp, acao_id, status, user_id}` — fonte de verdade do progresso e do estado SSR. Chaves sintéticas (sem `acao_id`): `__compartilhar` (compartilhou), `__naouso_{canal}` (clicou "Não uso" no `[pressao_multicanal]`; vale para a pessoa, não para a campanha) e `__lead` (já pedimos o e-mail no `[pressao_multicanal]`) |
 | `pressao_usuario_id` | ID anônimo do usuário (legado) |
 
 O payload de `pressao_acoes_realizadas` é mantido enxuto de propósito: estourar ~4KB derruba os cookies de sessão do WordPress e o AJAX começa a responder 403 "Nonce inválido".

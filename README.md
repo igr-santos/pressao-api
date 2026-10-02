@@ -490,7 +490,7 @@ Content-Type: application/json
 
 Retorna os alvos **para exibição** na campanha:
 
-- **E-mail:** um único item **agregado** (`modo=agregado`, nome padrão "Pressionar por E-mail") com `total_membros`; os e-mails individuais **não** aparecem nesta lista.
+- **E-mail:** um único item **agregado** (`modo=agregado`, nome padrão "Pressionar por E-mail") com `total_membros` e `membros` (só `nome` dos membros ativos, em ordem alfabética; sem contatos); os e-mails individuais **não** aparecem nesta lista.
 - **Outros canais** (WhatsApp, Instagram, telefone): um item por alvo (`modo=individual`).
 
 ```http
@@ -509,6 +509,7 @@ Exemplo (campanha com 2 e-mails e 1 WhatsApp):
     "tipo_contato": "email",
     "modo": "agregado",
     "total_membros": 2,
+    "membros": [{ "nome": "Ana Souza" }, { "nome": "João Lima" }],
     "template": { "id": "...", "titulo": "Assunto sorteado", "canal": "email" }
   },
   {
@@ -517,7 +518,8 @@ Exemplo (campanha com 2 e-mails e 1 WhatsApp):
     "contato": "11999999999",
     "tipo_contato": "whatsapp",
     "modo": "individual",
-    "total_membros": null
+    "total_membros": null,
+    "membros": null
   }
 ]
 ```
